@@ -65,6 +65,7 @@
                 <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
                     <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                     <Setter Property="Padding" Value="8,6"/>
+                    <Setter Property="Margin" Value="0,0,8,0"/>
                 </Style>
             </ListView.ItemContainerStyle>
             <ListView.ItemTemplate>
@@ -109,21 +110,51 @@
                                            Visibility="{x:Bind MoreFilesVisibility, Mode=OneWay}"/>
                             </StackPanel>
 
-                            <TextBlock Text="{x:Bind SourceLine}"
-                                       Style="{StaticResource CaptionTextBlockStyle}"
-                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <FontIcon Glyph="&#xE840;"
+                                          FontSize="10"
+                                          VerticalAlignment="Center"
+                                          Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                                          Visibility="{x:Bind PinnedVisibility, Mode=OneWay}"/>
+                                <TextBlock Text="{x:Bind SourceLine}"
+                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                            </StackPanel>
                         </StackPanel>
 
-                        <!-- Pin toggle — clicking this does NOT trigger ItemClick -->
-                        <ToggleButton Grid.Column="1"
-                                      Width="28" Height="28"
-                                      Padding="0"
-                                      VerticalAlignment="Center"
-                                      IsChecked="{x:Bind Pinned, Mode=OneWay}"
-                                      Command="{x:Bind TogglePinCommand}"
-                                      ToolTipService.ToolTip="Pin / unpin">
-                            <FontIcon Glyph="&#xE840;" FontSize="11"/>
-                        </ToggleButton>
+                        <!-- 3-dot menu — clicking this does NOT trigger ItemClick -->
+                        <Button Grid.Column="1"
+                                Width="28" Height="28"
+                                Padding="0"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                VerticalAlignment="Center"
+                                ToolTipService.ToolTip="More actions">
+                            <FontIcon Glyph="&#xE712;" FontSize="14"/>
+                            <Button.Flyout>
+                                <MenuFlyout Placement="BottomEdgeAlignedRight"
+                                            Opening="ItemActionsFlyout_Opening">
+                                    <MenuFlyoutItem Text="{x:Bind PinMenuLabel, Mode=OneWay}"
+                                                    Command="{x:Bind TogglePinCommand}"
+                                                    Padding="16,10"
+                                                    MinHeight="40"
+                                                    MinWidth="180">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon Glyph="{x:Bind PinMenuGlyph, Mode=OneWay}"/>
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                    <MenuFlyoutItem Text="Delete"
+                                                    Command="{x:Bind DeleteCommand}"
+                                                    Padding="16,10"
+                                                    MinHeight="40"
+                                                    MinWidth="180">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon Glyph="&#xE74D;"/>
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                </MenuFlyout>
+                            </Button.Flyout>
+                        </Button>
                     </Grid>
                 </DataTemplate>
             </ListView.ItemTemplate>

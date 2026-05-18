@@ -183,6 +183,32 @@ public sealed partial class ClipboardPopup : Window
     private void SettingsButton_Click(object sender, RoutedEventArgs e) =>
         App.Current?.ShowSettingsWindow();
 
+    // Apply outer-corner rounding so the hover highlight aligns with the
+    // popup's rounded overlay: first item rounds the top corners, last item
+    // rounds the bottom corners, and a single item rounds all four.
+    private void ItemActionsFlyout_Opening(object sender, object e)
+    {
+        if (sender is not MenuFlyout flyout) return;
+
+        // Inner radius = outer overlay radius (8) − presenter padding (4) so
+        // the item's rounded highlight sits flush inside the popup's rounded edge.
+        const double r = 4;
+        var items = flyout.Items;
+        for (int i = 0; i < items.Count; i++)
+        {
+            if (items[i] is not MenuFlyoutItem item) continue;
+
+            bool first = i == 0;
+            bool last  = i == items.Count - 1;
+            // CornerRadius(topLeft, topRight, bottomRight, bottomLeft)
+            item.CornerRadius = new CornerRadius(
+                first ? r : 0,
+                first ? r : 0,
+                last  ? r : 0,
+                last  ? r : 0);
+        }
+    }
+
     // ── Quick-paste 1–9 ──────────────────────────────────────────────────────
 
     // Fires when a key is pressed inside the popup but NOT consumed by a child

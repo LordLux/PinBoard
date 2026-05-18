@@ -6,68 +6,247 @@
     xmlns:controls="using:PinBoard.Views.Controls"
     Title="PinBoard Settings">
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Padding="24,20,24,28" Spacing="0"
-                    MaxWidth="480" HorizontalAlignment="Left">
+    <!-- SystemBackdrop is set in code-behind: Mica on Win11+, Acrylic on Win10. -->
 
-            <!-- ── Hotkey ─────────────────────────────────────────────────── -->
-            <TextBlock Text="Hotkey"
-                       Style="{StaticResource SubtitleTextBlockStyle}"
-                       Margin="0,0,0,8"/>
+    <Grid>
+        <Grid.Resources>
+            <!-- Shared style for the rounded "setting card" containers -->
+            <Style x:Key="SettingCardStyle" TargetType="Border">
+                <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}"/>
+                <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="CornerRadius" Value="8"/>
+                <Setter Property="Padding" Value="16,14"/>
+                <Setter Property="Margin" Value="0,0,0,6"/>
+            </Style>
+        </Grid.Resources>
 
-            <controls:HotkeyPickerControl
-                Modifiers="{x:Bind ViewModel.HotkeyModifiers, Mode=TwoWay}"
-                HotkeyKey="{x:Bind ViewModel.HotkeyKey, Mode=TwoWay}"
-                Margin="0,0,0,4"/>
+        <NavigationView x:Name="NavView"
+                        PaneDisplayMode="Left"
+                        PaneTitle="Settings"
+                        IsBackButtonVisible="Collapsed"
+                        IsSettingsVisible="False"
+                        IsPaneToggleButtonVisible="False"
+                        OpenPaneLength="220"
+                        SelectionChanged="NavView_SelectionChanged">
+            <NavigationView.Resources>
+                <!-- Default is "7,0,0,0" — flatten the top-left so the
+                     content column meets the pane with a square edge. -->
+                <CornerRadius x:Key="NavigationViewContentGridCornerRadius">0</CornerRadius>
+            </NavigationView.Resources>
 
-            <TextBlock Text="{x:Bind ViewModel.HotkeyConflictWarning}"
-                       TextWrapping="Wrap" Width="380"
-                       Style="{StaticResource CaptionTextBlockStyle}"
-                       Foreground="{ThemeResource SystemFillColorCriticalBrush}"
-                       Visibility="{x:Bind ViewModel.ShowHotkeyConflictWarning, Mode=OneWay}"
-                       Margin="0,4,0,24"/>
+            <NavigationView.MenuItems>
+                <NavigationViewItem x:Name="NavGeneral" Content="General" Tag="general" IsSelected="True">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE713;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem x:Name="NavHotkey" Content="Hotkey" Tag="hotkey">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE765;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem x:Name="NavHistory" Content="History" Tag="history">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE81C;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+            </NavigationView.MenuItems>
 
-            <!-- ── History ───────────────────────────────────────────────── -->
-            <TextBlock Text="History"
-                       Style="{StaticResource SubtitleTextBlockStyle}"
-                       Margin="0,0,0,8"/>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="32"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
 
-            <StackPanel Spacing="4" Margin="0,0,0,8">
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBlock Text="Keep up to" VerticalAlignment="Center"/>
-                    <TextBlock Text="{x:Bind ViewModel.HistoryCapDisplay, Mode=OneWay}"
-                               Style="{StaticResource BodyStrongTextBlockStyle}"
-                               VerticalAlignment="Center"/>
-                    <TextBlock Text="of unpinned history" VerticalAlignment="Center"/>
-                </StackPanel>
-                <Slider Minimum="100" Maximum="10000"
-                        Value="{x:Bind ViewModel.HistoryCap, Mode=TwoWay}"
-                        StepFrequency="100"
-                        SnapsTo="StepValues"
-                        Width="320"
-                        HorizontalAlignment="Left"/>
-            </StackPanel>
+                <!-- Drag region for the custom title bar -->
+                <Border x:Name="AppTitleBar" Grid.Row="0" Background="Transparent"/>
 
-            <Button Content="Clear unpinned history"
-                    Command="{x:Bind ViewModel.ClearHistoryCommand}"
-                    Margin="0,0,0,4"/>
-            <TextBlock Text="History cleared."
-                       Style="{StaticResource CaptionTextBlockStyle}"
-                       Foreground="{ThemeResource SystemFillColorSuccessBrush}"
-                       Visibility="{x:Bind ViewModel.HistoryJustCleared, Mode=OneWay}"
-                       Margin="0,0,0,24"/>
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                <Grid Padding="32,12,32,32" MaxWidth="720" HorizontalAlignment="Stretch">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
 
-            <!-- ── Startup ───────────────────────────────────────────────── -->
-            <TextBlock Text="Startup"
-                       Style="{StaticResource SubtitleTextBlockStyle}"
-                       Margin="0,0,0,8"/>
+                    <!-- Page title -->
+                    <TextBlock x:Name="PageTitle"
+                               Grid.Row="0"
+                               Text="General"
+                               Style="{StaticResource TitleTextBlockStyle}"
+                               Margin="0,0,0,24"/>
 
-            <ToggleSwitch Header="Run PinBoard at login"
-                          IsOn="{x:Bind ViewModel.RunAtStartup, Mode=TwoWay}"
-                          Margin="0,0,0,0"
-                          OnContent="On"
-                          OffContent="Off"/>
+                    <!-- ══════════════════════════════════════════════════
+                         GENERAL page
+                         ══════════════════════════════════════════════════ -->
+                    <StackPanel x:Name="GeneralPage" Grid.Row="1" Spacing="0">
 
-        </StackPanel>
-    </ScrollViewer>
+                        <!-- Run at startup card -->
+                        <Border Style="{StaticResource SettingCardStyle}">
+                            <Grid ColumnSpacing="16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <FontIcon Grid.Column="0"
+                                          Glyph="&#xE7E8;"
+                                          FontSize="20"
+                                          VerticalAlignment="Center"/>
+
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                    <TextBlock Text="Launch at login"
+                                               Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                                    <TextBlock Text="Start PinBoard automatically when you sign in to Windows."
+                                               Style="{StaticResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                               TextWrapping="Wrap"/>
+                                </StackPanel>
+
+                                <ToggleSwitch Grid.Column="2"
+                                              VerticalAlignment="Center"
+                                              MinWidth="0"
+                                              OnContent="On"
+                                              OffContent="Off"
+                                              IsOn="{x:Bind ViewModel.RunAtStartup, Mode=TwoWay}"/>
+                            </Grid>
+                        </Border>
+
+                    </StackPanel>
+
+                    <!-- ══════════════════════════════════════════════════
+                         HOTKEY page
+                         ══════════════════════════════════════════════════ -->
+                    <StackPanel x:Name="HotkeyPage" Grid.Row="1" Spacing="0" Visibility="Collapsed">
+
+                        <!-- Hotkey picker card -->
+                        <Border Style="{StaticResource SettingCardStyle}" Padding="16,16">
+                            <Grid ColumnSpacing="16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <FontIcon Grid.Column="0"
+                                          Glyph="&#xE765;"
+                                          FontSize="20"
+                                          VerticalAlignment="Top"
+                                          Margin="0,2,0,0"/>
+
+                                <StackPanel Grid.Column="1" Spacing="4">
+                                    <TextBlock Text="Activation shortcut"
+                                               Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                                    <TextBlock Text="Press this combination from anywhere to open the clipboard popup."
+                                               Style="{StaticResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                               TextWrapping="Wrap"
+                                               Margin="0,0,0,8"/>
+
+                                    <controls:HotkeyPickerControl
+                                        Modifiers="{x:Bind ViewModel.HotkeyModifiers, Mode=TwoWay}"
+                                        HotkeyKey="{x:Bind ViewModel.HotkeyKey, Mode=TwoWay}"/>
+
+                                    <TextBlock Text="{x:Bind ViewModel.HotkeyConflictWarning}"
+                                               TextWrapping="Wrap"
+                                               Style="{StaticResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                                               Visibility="{x:Bind ViewModel.ShowHotkeyConflictWarning, Mode=OneWay}"
+                                               Margin="0,8,0,0"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                    </StackPanel>
+
+                    <!-- ══════════════════════════════════════════════════
+                         HISTORY page
+                         ══════════════════════════════════════════════════ -->
+                    <StackPanel x:Name="HistoryPage" Grid.Row="1" Spacing="0" Visibility="Collapsed">
+
+                        <!-- History cap card -->
+                        <Border Style="{StaticResource SettingCardStyle}" Padding="16,16">
+                            <Grid ColumnSpacing="16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <FontIcon Grid.Column="0"
+                                          Glyph="&#xE81C;"
+                                          FontSize="20"
+                                          VerticalAlignment="Top"
+                                          Margin="0,2,0,0"/>
+
+                                <StackPanel Grid.Column="1" Spacing="6">
+                                    <Grid ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <TextBlock Grid.Column="0"
+                                                   Text="History capacity"
+                                                   Style="{StaticResource BodyStrongTextBlockStyle}"
+                                                   VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="1"
+                                                   Text="{x:Bind ViewModel.HistoryCapDisplay, Mode=OneWay}"
+                                                   Style="{StaticResource BodyStrongTextBlockStyle}"
+                                                   Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                                                   VerticalAlignment="Center"/>
+                                    </Grid>
+                                    <TextBlock Text="Maximum number of unpinned items kept in your clipboard history."
+                                               Style="{StaticResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                               TextWrapping="Wrap"/>
+                                    <Slider Minimum="100" Maximum="10000"
+                                            Value="{x:Bind ViewModel.HistoryCap, Mode=TwoWay}"
+                                            StepFrequency="100"
+                                            SnapsTo="StepValues"
+                                            Margin="0,4,0,0"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <!-- Clear history card -->
+                        <Border Style="{StaticResource SettingCardStyle}">
+                            <Grid ColumnSpacing="16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <FontIcon Grid.Column="0"
+                                          Glyph="&#xE74D;"
+                                          FontSize="20"
+                                          VerticalAlignment="Center"/>
+
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                    <TextBlock Text="Clear history"
+                                               Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                                    <TextBlock Text="Remove all unpinned items. Pinned items are preserved."
+                                               Style="{StaticResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                               TextWrapping="Wrap"/>
+                                    <TextBlock Text="History cleared."
+                                               Style="{StaticResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource SystemFillColorSuccessBrush}"
+                                               Visibility="{x:Bind ViewModel.HistoryJustCleared, Mode=OneWay}"
+                                               Margin="0,4,0,0"/>
+                                </StackPanel>
+
+                                <Button Grid.Column="2"
+                                        Content="Clear"
+                                        Command="{x:Bind ViewModel.ClearHistoryCommand}"
+                                        VerticalAlignment="Center"/>
+                            </Grid>
+                        </Border>
+
+                    </StackPanel>
+                </Grid>
+                </ScrollViewer>
+            </Grid>
+        </NavigationView>
+    </Grid>
 </Window>

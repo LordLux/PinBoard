@@ -18,7 +18,11 @@ public sealed partial class ClipItemViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(PinnedVisibility))]
+    [NotifyPropertyChangedFor(nameof(PinMenuLabel))]
+    [NotifyPropertyChangedFor(nameof(PinMenuGlyph))]
     private bool _pinned;
+
+    public event EventHandler? Deleted;
 
     [ObservableProperty] private BitmapImage? _thumbnailSource;
 
@@ -30,6 +34,11 @@ public sealed partial class ClipItemViewModel : ObservableObject
 
     public Visibility PinnedVisibility =>
         Pinned ? Visibility.Visible : Visibility.Collapsed;
+
+    public string PinMenuLabel => Pinned ? "Unpin" : "Pin";
+
+    // E840 = Pinned (filled pin); E77A = Unpin (pin with slash)
+    public string PinMenuGlyph => Pinned ? "" : "";
 
     public Visibility ImageVisibility =>
         Model.Kind == ClipItemKind.Image ? Visibility.Visible : Visibility.Collapsed;
@@ -106,8 +115,11 @@ public sealed partial class ClipItemViewModel : ObservableObject
     }
 
     [RelayCommand]
-    public async Task DeleteAsync() =>
+    public async Task DeleteAsync()
+    {
         await _store.DeleteAsync(Model.Id);
+        Deleted?.Invoke(this, EventArgs.Empty);
+    }
 
     // ── Thumbnail / file-list loading ────────────────────────────────────────
 

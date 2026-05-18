@@ -109,6 +109,22 @@ public sealed partial class ClipboardPopupViewModel : ObservableObject
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
-    private ClipItemViewModel CreateVm(ClipItem item) =>
-        new(item, _clipboard, _paster, _store);
+    private ClipItemViewModel CreateVm(ClipItem item)
+    {
+        var vm = new ClipItemViewModel(item, _clipboard, _paster, _store);
+        vm.Deleted += OnItemDeleted;
+        return vm;
+    }
+
+    private void OnItemDeleted(object? sender, EventArgs _)
+    {
+        if (sender is not ClipItemViewModel vm) return;
+        _uiQueue.TryEnqueue(() =>
+        {
+            vm.Deleted -= OnItemDeleted;
+            Items.Remove(vm);
+            OnPropertyChanged(nameof(FooterText));
+            OnPropertyChanged(nameof(HasItems));
+        });
+    }
 }
