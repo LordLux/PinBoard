@@ -37,11 +37,9 @@ internal static class UiAutomationCaret
 
     public static RectInt32? GetCaretRect(TimeSpan timeout)
     {
-        // UIA calls make a cross-process COM round-trip to the foreground window's
-        // process. When VS is attached as a debugger and is also the foreground app,
-        // this deadlocks VS's UI thread. Skip entirely when debugging.
-        if (System.Diagnostics.Debugger.IsAttached) return null;
-
+        // UIA probe runs on a background MTA thread with a hard timeout, so a
+        // deadlock (e.g. VS debugging cross-process COM) times out after 80 ms
+        // and returns null — the main thread is never blocked.
         RectInt32? result = null;
 
         var thread = new Thread(() =>
@@ -107,7 +105,24 @@ internal static class UiAutomationCaret
 
         double x = rects[0], y = rects[1], w = rects[2], h = rects[3];
         Trace($"rect => x={x} y={y} w={w} h={h}");
-        if (w <= 0 || h <= 0) return null;
+
+        // Degenerate range (caret with no selection) returns a zero-width rect.
+        // Expand to one character and retry.  For a real selection the rect is
+        // already non-zero and we skip this step — first rect = selection start.
+        if (w <= 0 || h <= 0)
+        {
+            Trace("ExpandToEnclosingUnit(Character)");
+            try { range.ExpandToEnclosingUnit(4); }
+            catch { Trace("ExpandToEnclosingUnit threw"); return null; }
+
+            rects = range.GetBoundingRectangles();
+            Trace($"GetBoundingRectangles (after expand) => {(rects is null ? "null" : $"len={rects.Length}")}");
+            if (rects is null || rects.Length < 4) return null;
+
+            x = rects[0]; y = rects[1]; w = rects[2]; h = rects[3];
+            Trace($"rect (after expand) => x={x} y={y} w={w} h={h}");
+            if (w <= 0 || h <= 0) return null;
+        }
 
         Trace("--- Probe success ---");
         return new RectInt32((int)x, (int)y, (int)w, (int)h);
@@ -128,8 +143,11 @@ internal static class UiAutomationCaret
         [PreserveSig] int _CompareRuntimeIds();
         // vtable[5]  GetRootElement
         [PreserveSig] int _GetRootElement();
-        // vtable[6]  GetFocusedElement — we call this
-        // NOTE: GetRootElementBuildCache comes AFTER this in the real SDK header.
+        // vtable[6]  ElementFromHandle  ← present in the real header between GetRootElement and ElementFromPoint
+        [PreserveSig] int _ElementFromHandle();
+        // vtable[7]  ElementFromPoint
+        [PreserveSig] int _ElementFromPoint();
+        // vtable[8]  GetFocusedElement — we call this
         IUIAutomationElement? GetFocusedElement();
         // Rest of the interface is omitted; we stop after the method we need.
     }
@@ -201,8 +219,8 @@ internal static class UiAutomationCaret
         [PreserveSig] int _Compare();
         // vtable[5]  CompareEndpoints
         [PreserveSig] int _CompareEndpoints();
-        // vtable[6]  ExpandToEnclosingUnit
-        [PreserveSig] int _ExpandToEnclosingUnit();
+        // vtable[6]  ExpandToEnclosingUnit — called with TextUnit_Character (4) before GetBoundingRectangles
+        void ExpandToEnclosingUnit(int textUnit);
         // vtable[7]  FindAttribute
         [PreserveSig] int _FindAttribute();
         // vtable[8]  FindText
