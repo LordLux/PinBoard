@@ -1,0 +1,21 @@
+# Build output
+bin/
+obj/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userprefs
+
+# NuGet
+*.nupkg
+packages/
+
+# MSIX / AppX build artifacts
+AppPackages/
+BundleArtifacts/
+
+# OS
+Thumbs.db
+.DS_Store

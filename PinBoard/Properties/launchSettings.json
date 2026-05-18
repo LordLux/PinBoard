@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "PinBoard (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "PinBoard (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

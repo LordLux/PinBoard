@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="PinBoard.Views.Controls.HotkeyPickerControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <StackPanel Spacing="4">
+
+        <!-- Modifier checkboxes -->
+        <TextBlock Text="Modifiers"
+                   Style="{StaticResource CaptionTextBlockStyle}"
+                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+        <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,2,0,8">
+            <CheckBox x:Name="WinCheck"   Content="Win"   Checked="OnModifierChanged" Unchecked="OnModifierChanged"/>
+            <CheckBox x:Name="CtrlCheck"  Content="Ctrl"  Checked="OnModifierChanged" Unchecked="OnModifierChanged"/>
+            <CheckBox x:Name="AltCheck"   Content="Alt"   Checked="OnModifierChanged" Unchecked="OnModifierChanged"/>
+            <CheckBox x:Name="ShiftCheck" Content="Shift" Checked="OnModifierChanged" Unchecked="OnModifierChanged"/>
+        </StackPanel>
+
+        <!-- Key dropdown + Reset -->
+        <TextBlock Text="Key"
+                   Style="{StaticResource CaptionTextBlockStyle}"
+                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2,0,0">
+            <ComboBox x:Name="KeyCombo" MinWidth="90"
+                      SelectionChanged="OnKeyChanged"/>
+            <Button Content="Reset to default"
+                    Click="OnReset"
+                    VerticalAlignment="Center"/>
+        </StackPanel>
+
+        <!-- Win+V warning -->
+        <TextBlock x:Name="WinVWarning"
+                   TextWrapping="Wrap"
+                   Text="This will intercept the Windows clipboard shortcut (Win+V). The built-in clipboard history will stop responding to Win+V."
+                   Style="{StaticResource CaptionTextBlockStyle}"
+                   Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                   Margin="0,6,0,0"
+                   Visibility="Collapsed"/>
+
+    </StackPanel>
+</UserControl>

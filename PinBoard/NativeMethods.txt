@@ -1,0 +1,86 @@
+// CsWin32 source-generator API list.
+// One function / enum / struct name per line.
+
+// Hotkey
+RegisterHotKey
+UnregisterHotKey
+
+// Window subclassing (WndProc interception without WinUI 3 override)
+SetWindowSubclass
+RemoveWindowSubclass
+DefSubclassProc
+
+// Clipboard monitoring
+AddClipboardFormatListener
+RemoveClipboardFormatListener
+OpenClipboard
+CloseClipboard
+EmptyClipboard
+GetClipboardData
+SetClipboardData
+EnumClipboardFormats
+GetClipboardFormatName
+RegisterClipboardFormat
+GlobalAlloc
+GlobalLock
+GlobalUnlock
+GlobalFree
+GlobalSize
+GLOBAL_ALLOC_FLAGS
+
+// Window state
+GetForegroundWindow
+SetForegroundWindow
+AllowSetForegroundWindow
+GetWindowThreadProcessId
+GetWindowRect
+GetClientRect
+ClientToScreen
+SetWindowLong
+GetWindowLong
+SetWindowPos
+WINDOW_LONG_PTR_INDEX
+WINDOW_EX_STYLE
+SET_WINDOW_POS_FLAGS
+
+// Cursor / caret
+GetCursorPos
+GetGUIThreadInfo
+
+// Input simulation
+SendInput
+INPUT
+KEYBDINPUT
+VIRTUAL_KEY
+
+// DWM (rounded corners, shadows)
+DwmSetWindowAttribute
+DWMWINDOWATTRIBUTE
+DWM_WINDOW_CORNER_PREFERENCE
+
+// Monitor / DPI
+MonitorFromPoint
+GetMonitorInfo
+GetDpiForMonitor
+GetDpiForWindow
+MONITOR_FROM_FLAGS
+
+// Shell (source-app icon)
+SHGetFileInfo
+SHGFI_FLAGS
+
+// Message pump helpers
+PostMessage
+PostThreadMessage
+GetMessage
+TranslateMessage
+DispatchMessage
+PeekMessage
+PEEK_MESSAGE_REMOVE_TYPE
+
+// Low-level keyboard hook (Phase 7 Tier B Win+V capture)
+SetWindowsHookEx
+UnhookWindowsHookEx
+CallNextHookEx
+WINDOWS_HOOK_ID
+KBDLLHOOKSTRUCT

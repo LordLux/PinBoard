@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="PinBoard.Views.SettingsWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:PinBoard.Views.Controls"
+    Title="PinBoard Settings">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Padding="24,20,24,28" Spacing="0"
+                    MaxWidth="480" HorizontalAlignment="Left">
+
+            <!-- ── Hotkey ─────────────────────────────────────────────────── -->
+            <TextBlock Text="Hotkey"
+                       Style="{StaticResource SubtitleTextBlockStyle}"
+                       Margin="0,0,0,8"/>
+
+            <controls:HotkeyPickerControl
+                Modifiers="{x:Bind ViewModel.HotkeyModifiers, Mode=TwoWay}"
+                HotkeyKey="{x:Bind ViewModel.HotkeyKey, Mode=TwoWay}"
+                Margin="0,0,0,4"/>
+
+            <TextBlock Text="{x:Bind ViewModel.HotkeyConflictWarning}"
+                       TextWrapping="Wrap" Width="380"
+                       Style="{StaticResource CaptionTextBlockStyle}"
+                       Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                       Visibility="{x:Bind ViewModel.ShowHotkeyConflictWarning, Mode=OneWay}"
+                       Margin="0,4,0,24"/>
+
+            <!-- ── History ───────────────────────────────────────────────── -->
+            <TextBlock Text="History"
+                       Style="{StaticResource SubtitleTextBlockStyle}"
+                       Margin="0,0,0,8"/>
+
+            <StackPanel Spacing="4" Margin="0,0,0,8">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="Keep up to" VerticalAlignment="Center"/>
+                    <TextBlock Text="{x:Bind ViewModel.HistoryCapDisplay, Mode=OneWay}"
+                               Style="{StaticResource BodyStrongTextBlockStyle}"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Text="of unpinned history" VerticalAlignment="Center"/>
+                </StackPanel>
+                <Slider Minimum="100" Maximum="10000"
+                        Value="{x:Bind ViewModel.HistoryCap, Mode=TwoWay}"
+                        StepFrequency="100"
+                        SnapsTo="StepValues"
+                        Width="320"
+                        HorizontalAlignment="Left"/>
+            </StackPanel>
+
+            <Button Content="Clear unpinned history"
+                    Command="{x:Bind ViewModel.ClearHistoryCommand}"
+                    Margin="0,0,0,4"/>
+            <TextBlock Text="History cleared."
+                       Style="{StaticResource CaptionTextBlockStyle}"
+                       Foreground="{ThemeResource SystemFillColorSuccessBrush}"
+                       Visibility="{x:Bind ViewModel.HistoryJustCleared, Mode=OneWay}"
+                       Margin="0,0,0,24"/>
+
+            <!-- ── Startup ───────────────────────────────────────────────── -->
+            <TextBlock Text="Startup"
+                       Style="{StaticResource SubtitleTextBlockStyle}"
+                       Margin="0,0,0,8"/>
+
+            <ToggleSwitch Header="Run PinBoard at login"
+                          IsOn="{x:Bind ViewModel.RunAtStartup, Mode=TwoWay}"
+                          Margin="0,0,0,0"
+                          OnContent="On"
+                          OffContent="Off"/>
+
+        </StackPanel>
+    </ScrollViewer>
+</Window>

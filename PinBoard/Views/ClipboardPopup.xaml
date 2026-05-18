@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="PinBoard.Views.ClipboardPopup"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:PinBoard.ViewModels">
+
+    <Grid Background="{ThemeResource LayerFillColorDefaultBrush}"
+          KeyDown="RootGrid_KeyDown">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Title bar -->
+        <Grid Grid.Row="0" Height="40" Padding="12,0,8,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <FontIcon Grid.Column="0" Glyph="&#xE8C8;" FontSize="16"
+                      VerticalAlignment="Center" Margin="0,0,8,0"
+                      Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
+
+            <TextBlock Grid.Column="1" Text="Clipboard"
+                       VerticalAlignment="Center"
+                       Style="{StaticResource SubtitleTextBlockStyle}"/>
+
+            <ToggleButton x:Name="PinWindowButton" Grid.Column="2"
+                          Width="32" Height="32" Padding="0"
+                          VerticalAlignment="Center"
+                          Click="PinWindowButton_Click"
+                          ToolTipService.ToolTip="Keep window open (hotkey to close)">
+                <FontIcon Glyph="&#xE840;" FontSize="14"/>
+            </ToggleButton>
+        </Grid>
+
+        <!-- Search box -->
+        <TextBox x:Name="SearchBox"
+                 Grid.Row="1"
+                 Margin="8,0,8,4"
+                 PlaceholderText="Search history..."
+                 Text="{x:Bind ViewModel.SearchQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+            <TextBox.KeyboardAccelerators>
+                <KeyboardAccelerator Key="Escape" Invoked="OnEscapeAccelerator"/>
+            </TextBox.KeyboardAccelerators>
+        </TextBox>
+
+        <!-- History list -->
+        <ListView x:Name="ItemsList"
+                  Grid.Row="2"
+                  Margin="4,0,4,0"
+                  SelectionMode="Single"
+                  IsItemClickEnabled="True"
+                  ItemsSource="{x:Bind ViewModel.Items, Mode=OneWay}"
+                  ItemClick="ItemsList_ItemClick">
+            <ListView.KeyboardAccelerators>
+                <KeyboardAccelerator Key="Escape" Invoked="OnEscapeAccelerator"/>
+            </ListView.KeyboardAccelerators>
+            <ListView.ItemContainerStyle>
+                <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                    <Setter Property="Padding" Value="8,6"/>
+                </Style>
+            </ListView.ItemContainerStyle>
+            <ListView.ItemTemplate>
+                <DataTemplate x:DataType="vm:ClipItemViewModel">
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Preview + source line -->
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
+
+                            <!-- Text / Rich items -->
+                            <TextBlock Text="{x:Bind PreviewText}"
+                                       MaxLines="2"
+                                       TextTrimming="CharacterEllipsis"
+                                       Style="{StaticResource BodyTextBlockStyle}"
+                                       Visibility="{x:Bind TextVisibility}"/>
+
+                            <!-- Image items -->
+                            <Image Source="{x:Bind ThumbnailSource, Mode=OneWay}"
+                                   MaxHeight="60"
+                                   HorizontalAlignment="Left"
+                                   Stretch="Uniform"
+                                   Visibility="{x:Bind ImageVisibility}"/>
+
+                            <!-- File-drop items -->
+                            <StackPanel Visibility="{x:Bind FilesVisibility}">
+                                <ItemsControl ItemsSource="{x:Bind FileListPreview, Mode=OneWay}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding}"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Style="{StaticResource BodyTextBlockStyle}"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Text="{x:Bind MoreFilesText, Mode=OneWay}"
+                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                           Visibility="{x:Bind MoreFilesVisibility, Mode=OneWay}"/>
+                            </StackPanel>
+
+                            <TextBlock Text="{x:Bind SourceLine}"
+                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                        </StackPanel>
+
+                        <!-- Pin toggle — clicking this does NOT trigger ItemClick -->
+                        <ToggleButton Grid.Column="1"
+                                      Width="28" Height="28"
+                                      Padding="0"
+                                      VerticalAlignment="Center"
+                                      IsChecked="{x:Bind Pinned, Mode=OneWay}"
+                                      Command="{x:Bind TogglePinCommand}"
+                                      ToolTipService.ToolTip="Pin / unpin">
+                            <FontIcon Glyph="&#xE840;" FontSize="11"/>
+                        </ToggleButton>
+                    </Grid>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+
+        <!-- Footer -->
+        <Grid Grid.Row="3" Padding="12,4,12,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Grid.Column="0"
+                       Text="{x:Bind ViewModel.FooterText, Mode=OneWay}"
+                       VerticalAlignment="Center"
+                       Style="{StaticResource CaptionTextBlockStyle}"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+
+            <HyperlinkButton Grid.Column="1"
+                             Content="Settings"
+                             Padding="0"
+                             Click="SettingsButton_Click"/>
+        </Grid>
+    </Grid>
+</Window>
