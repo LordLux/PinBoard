@@ -375,30 +375,38 @@ public sealed partial class SettingsWindow : Window
     private void DragRegion_SizeChanged(object sender, SizeChangedEventArgs e) =>
         UpdateDragRegion();
 
-    // Register the DragRegion as a Caption region with the OS, but cut out
-    // the bounds of the CaptionButtons StackPanel so its buttons receive
-    // pointer events normally. Coordinates passed to SetRegionRects are in
-    // physical pixels relative to the window's top-left.
+    // Register TWO caption regions: the title-bar area in the left column
+    // (full width of the column) and the right-column overlay (full width
+    // minus the CaptionButtons). Both are passed to SetRegionRects in a
+    // single array. Coordinates are physical pixels relative to the
+    // window's top-left.
     private void UpdateDragRegion()
     {
-        if (_ncInput is null || DragRegion.XamlRoot is null) return;
+        if (_ncInput is null || DragRegionLeft.XamlRoot is null) return;
 
-        double scale = DragRegion.XamlRoot.RasterizationScale;
+        double scale = DragRegionLeft.XamlRoot.RasterizationScale;
 
-        var bounds = DragRegion
+        var leftBounds = DragRegionLeft
             .TransformToVisual(null)
-            .TransformBounds(new Windows.Foundation.Rect(0, 0, DragRegion.ActualWidth, DragRegion.ActualHeight));
+            .TransformBounds(new Windows.Foundation.Rect(0, 0, DragRegionLeft.ActualWidth, DragRegionLeft.ActualHeight));
+        var leftRect = new RectInt32(
+            _X:      (int)System.Math.Round(leftBounds.X * scale),
+            _Y:      (int)System.Math.Round(leftBounds.Y * scale),
+            _Width:  (int)System.Math.Round(leftBounds.Width  * scale),
+            _Height: (int)System.Math.Round(leftBounds.Height * scale));
 
+        var rightBounds = DragRegionRight
+            .TransformToVisual(null)
+            .TransformBounds(new Windows.Foundation.Rect(0, 0, DragRegionRight.ActualWidth, DragRegionRight.ActualHeight));
         double buttonsWidth = CaptionButtons.ActualWidth;
-        double dragWidth    = System.Math.Max(0, bounds.Width - buttonsWidth);
+        double rightDragWidth = System.Math.Max(0, rightBounds.Width - buttonsWidth);
+        var rightRect = new RectInt32(
+            _X:      (int)System.Math.Round(rightBounds.X * scale),
+            _Y:      (int)System.Math.Round(rightBounds.Y * scale),
+            _Width:  (int)System.Math.Round(rightDragWidth * scale),
+            _Height: (int)System.Math.Round(rightBounds.Height * scale));
 
-        var rect = new RectInt32(
-            _X:      (int)System.Math.Round(bounds.X * scale),
-            _Y:      (int)System.Math.Round(bounds.Y * scale),
-            _Width:  (int)System.Math.Round(dragWidth   * scale),
-            _Height: (int)System.Math.Round(bounds.Height * scale));
-
-        _ncInput.SetRegionRects(NonClientRegionKind.Caption, new[] { rect });
+        _ncInput.SetRegionRects(NonClientRegionKind.Caption, new[] { leftRect, rightRect });
     }
 
     private void UpdateMaximizeGlyph()

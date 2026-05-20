@@ -52,55 +52,36 @@
             <ColumnDefinition Width="220"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="32"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
 
-        <!-- Dark left column. Spans both rows so the colour continues
-             through the custom title bar. Pure decoration — non-hit-test
-             so it never intercepts drag or button clicks. -->
-        <Border Grid.Row="0" Grid.RowSpan="2" Grid.Column="0"
-                Background="#171717"
-                IsHitTestVisible="False"/>
+        <!-- ══════════════════════════════════════════════════════════════
+             LEFT COLUMN — titlebar slot at top, nav tiles below.
+             Both share the dark #171717 background.
+             ══════════════════════════════════════════════════════════════ -->
+        <Grid Grid.Column="0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="40"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
 
-        <!-- Drag region. -->
-        <Border x:Name="DragRegion"
-                Grid.Row="0" Grid.ColumnSpan="2"
-                Background="Transparent"
-                SizeChanged="DragRegion_SizeChanged"
-                Loaded="DragRegion_Loaded"/>
+            <!-- Dark background covers the whole left column. -->
+            <Border Grid.Row="0" Grid.RowSpan="2"
+                    Background="#171717"
+                    IsHitTestVisible="False"/>
 
-        <TextBlock Grid.Row="0" Grid.Column="0"
-                   Text="Settings"
-                   VerticalAlignment="Center"
-                   Margin="14,0,0,0"
-                   Foreground="White"
-                   FontSize="12"
-                   IsHitTestVisible="False"/>
+            <!-- Left half of the drag bar. -->
+            <Border x:Name="DragRegionLeft"
+                    Grid.Row="0"
+                    Background="Transparent"
+                    SizeChanged="DragRegion_SizeChanged"
+                    Loaded="DragRegion_Loaded"/>
 
-        <StackPanel x:Name="CaptionButtons"
-                    Grid.Row="0" Grid.Column="1"
-                    Orientation="Horizontal"
-                    HorizontalAlignment="Right"
-                    VerticalAlignment="Top">
-            <Button Style="{StaticResource CaptionButtonStyle}"
-                    Click="MinimizeButton_Click"
-                    ToolTipService.ToolTip="Minimize">
-                <FontIcon Glyph="&#xE921;" FontSize="10"/>
-            </Button>
-            <Button x:Name="MaximizeButton"
-                    Style="{StaticResource CaptionButtonStyle}"
-                    Click="MaximizeButton_Click"
-                    ToolTipService.ToolTip="Maximize">
-                <FontIcon x:Name="MaximizeGlyph" Glyph="&#xE922;" FontSize="10"/>
-            </Button>
-            <Button Style="{StaticResource CloseCaptionButtonStyle}"
-                    Click="CloseButton_Click"
-                    ToolTipService.ToolTip="Close">
-                <FontIcon Glyph="&#xE8BB;" FontSize="10"/>
-            </Button>
-        </StackPanel>
+            <TextBlock Grid.Row="0"
+                       Text="Settings"
+                       VerticalAlignment="Center"
+                       Margin="14,0,0,0"
+                       Foreground="White"
+                       FontSize="12"
+                       IsHitTestVisible="False"/>
 
         <!-- ══════════════════════════════════════════════════════════════
              LEFT COLUMN — nav tiles. Plain Grids with manual selection
@@ -112,8 +93,8 @@
               • the body (Bg fill + icon + label);
               • a 14px right margin for symmetry.
              ══════════════════════════════════════════════════════════════ -->
-        <StackPanel Grid.Row="1" Grid.Column="0"
-                    Margin="0,8,0,0"
+        <StackPanel Grid.Row="1"
+                    Margin="0,14,0,0"
                     Spacing="3">
             <Grid x:Name="NavGeneral" Tag="general"
                   Background="Transparent"
@@ -235,16 +216,27 @@
                            Fill="#8B7BE0" Opacity="0"/>
             </Grid>
         </StackPanel>
+        </Grid>
 
         <!-- ══════════════════════════════════════════════════════════════
-             RIGHT COLUMN — page content
+             RIGHT COLUMN — page content fills the entire column. The right
+             half of the drag bar plus the window buttons sit as an overlay
+             at the top; content scrolls underneath the overlay area, so
+             the ScrollViewer's top padding (40) keeps the page title clear
+             of the buttons when scrolled to the top.
              ══════════════════════════════════════════════════════════════ -->
+        <Grid Grid.Column="1">
         <ScrollViewer x:Name="ContentScroll"
-                      Grid.Row="1" Grid.Column="1"
                       VerticalScrollBarVisibility="Auto"
-                      HorizontalScrollBarVisibility="Disabled"
-                      Padding="32,8,32,32">
-            <Grid MaxWidth="780" HorizontalAlignment="Stretch">
+                      HorizontalScrollBarVisibility="Disabled">
+            <!-- Inset goes on the Grid's Margin, NOT the ScrollViewer's
+                 Padding — ScrollViewer.Padding stays fixed at the viewport
+                 edge and the content can't scroll past it. With Margin on
+                 the content, the inset scrolls with the rest of the page,
+                 so the page title slides under the right-side overlay as
+                 you scroll down. -->
+            <Grid MaxWidth="780" HorizontalAlignment="Stretch"
+                  Margin="32,54,32,32">
 
                 <!-- ── GENERAL ────────────────────────────────────────────── -->
                 <StackPanel x:Name="PageGeneral">
@@ -385,5 +377,36 @@
                 </StackPanel>
             </Grid>
         </ScrollViewer>
+
+        <!-- Right half of the drag bar — transparent overlay above the
+             content, top 32px. Caption rect (set in code-behind) excludes
+             the CaptionButtons bounds so their clicks still reach XAML. -->
+        <Border x:Name="DragRegionRight"
+                VerticalAlignment="Top" Height="40"
+                Background="Transparent"
+                SizeChanged="DragRegion_SizeChanged"/>
+
+        <StackPanel x:Name="CaptionButtons"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Top">
+            <Button Style="{StaticResource CaptionButtonStyle}"
+                    Click="MinimizeButton_Click"
+                    ToolTipService.ToolTip="Minimize">
+                <FontIcon Glyph="&#xE921;" FontSize="10"/>
+            </Button>
+            <Button x:Name="MaximizeButton"
+                    Style="{StaticResource CaptionButtonStyle}"
+                    Click="MaximizeButton_Click"
+                    ToolTipService.ToolTip="Maximize">
+                <FontIcon x:Name="MaximizeGlyph" Glyph="&#xE922;" FontSize="10"/>
+            </Button>
+            <Button Style="{StaticResource CloseCaptionButtonStyle}"
+                    Click="CloseButton_Click"
+                    ToolTipService.ToolTip="Close">
+                <FontIcon Glyph="&#xE8BB;" FontSize="10"/>
+            </Button>
+        </StackPanel>
+        </Grid>
     </Grid>
 </Window>
