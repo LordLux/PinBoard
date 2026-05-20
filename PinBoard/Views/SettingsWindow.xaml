@@ -6,14 +6,28 @@
     xmlns:controls="using:PinBoard.Views.Controls"
     Title="PinBoard Settings">
 
-    <Grid Background="#1E1E1E">
+    <!-- Root Grid's Background is set in code-behind by ApplyTransparency
+         (it can't use a StaticResource on its own resource dictionary —
+         the attribute is parsed before Grid.Resources is populated). -->
+    <Grid x:Name="RootGrid">
         <Grid.Resources>
+            <!-- Brushes whose Colors get mutated at runtime by
+                 ApplyTransparency() to switch between translucent (Mica/
+                 Acrylic visible) and solid (Mica/Acrylic off) appearances.
+                 All child elements that need to swap appearance reference
+                 these by StaticResource — mutating the brush's Color
+                 propagates to every binding because the references share
+                 the same brush instance. -->
+            <SolidColorBrush x:Key="LeftColumnBrush"  Color="#28000000"/>
+            <SolidColorBrush x:Key="CardBrush"        Color="#305C5C5C"/>
+            <SolidColorBrush x:Key="NavSelectedBrush" Color="#305C5C5C"/>
+
             <!-- ════════════════════════════════════════════════════════════
-                 Setting card: solid dark panel that wraps each row of
+                 Setting card: dark panel that wraps each row of
                  (icon, title+description, control).
                  ════════════════════════════════════════════════════════════ -->
             <Style x:Key="CardStyle" TargetType="Border">
-                <Setter Property="Background"    Value="#272727"/>
+                <Setter Property="Background"    Value="{StaticResource CardBrush}"/>
                 <Setter Property="CornerRadius"  Value="6"/>
                 <Setter Property="Padding"       Value="20,16"/>
                 <Setter Property="Margin"        Value="0,0,0,8"/>
@@ -63,9 +77,11 @@
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
-            <!-- Dark background covers the whole left column. -->
+            <!-- Left-column background. In translucent mode this is a
+                 semi-transparent black overlay over the Mica/Acrylic
+                 backdrop; in solid mode it becomes opaque #171717. -->
             <Border Grid.Row="0" Grid.RowSpan="2"
-                    Background="#171717"
+                    Background="{StaticResource LeftColumnBrush}"
                     IsHitTestVisible="False"/>
 
             <!-- Left half of the drag bar. -->
@@ -107,7 +123,7 @@
                      and the bar is positioned absolutely at x=14 over the
                      top of everything thanks to sibling z-order. -->
                 <Border x:Name="NavGeneralBg"
-                        Background="#242424" CornerRadius="4" Opacity="0"
+                        Background="{StaticResource NavSelectedBrush}" CornerRadius="4" Opacity="0"
                         Margin="14,0,14,0"/>
                 <Grid Margin="24,0,26,0">
                     <Grid.ColumnDefinitions>
@@ -136,7 +152,7 @@
                   PointerEntered="NavTile_PointerEntered"
                   PointerExited="NavTile_PointerExited">
                 <Border x:Name="NavHotkeyBg"
-                        Background="#242424" CornerRadius="4" Opacity="0"
+                        Background="{StaticResource NavSelectedBrush}" CornerRadius="4" Opacity="0"
                         Margin="14,0,14,0"/>
                 <Grid Margin="24,0,26,0">
                     <Grid.ColumnDefinitions>
@@ -165,7 +181,7 @@
                   PointerEntered="NavTile_PointerEntered"
                   PointerExited="NavTile_PointerExited">
                 <Border x:Name="NavHistoryBg"
-                        Background="#242424" CornerRadius="4" Opacity="0"
+                        Background="{StaticResource NavSelectedBrush}" CornerRadius="4" Opacity="0"
                         Margin="14,0,14,0"/>
                 <Grid Margin="24,0,26,0">
                     <Grid.ColumnDefinitions>
@@ -194,7 +210,7 @@
                   PointerEntered="NavTile_PointerEntered"
                   PointerExited="NavTile_PointerExited">
                 <Border x:Name="NavAboutBg"
-                        Background="#242424" CornerRadius="4" Opacity="0"
+                        Background="{StaticResource NavSelectedBrush}" CornerRadius="4" Opacity="0"
                         Margin="14,0,14,0"/>
                 <Grid Margin="24,0,26,0">
                     <Grid.ColumnDefinitions>
@@ -259,6 +275,26 @@
                                           MinWidth="0"
                                           OnContent="On" OffContent="Off"
                                           IsOn="{x:Bind ViewModel.RunAtStartup, Mode=TwoWay}"/>
+                        </Grid>
+                    </Border>
+
+                    <Border Style="{StaticResource CardStyle}">
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <FontIcon Grid.Column="0" Style="{StaticResource CardIconStyle}" Glyph="&#xE790;"/>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                <TextBlock Style="{StaticResource CardTitleStyle}"    Text="Translucent background"/>
+                                <TextBlock Style="{StaticResource CardSubtitleStyle}" Text="{x:Bind ViewModel.TransparencyDescription}"/>
+                            </StackPanel>
+                            <ToggleSwitch Grid.Column="2"
+                                          VerticalAlignment="Center"
+                                          MinWidth="0"
+                                          OnContent="On" OffContent="Off"
+                                          IsOn="{x:Bind ViewModel.UseTransparency, Mode=TwoWay}"/>
                         </Grid>
                     </Border>
                 </StackPanel>
@@ -348,8 +384,9 @@
                             </StackPanel>
                             <Button Grid.Column="2"
                                     Content="Clear"
+                                    Foreground="#E55A65"
                                     VerticalAlignment="Center"
-                                    Command="{x:Bind ViewModel.ClearHistoryCommand}"/>
+                                    Click="ClearHistoryButton_Click"/>
                         </Grid>
                     </Border>
                 </StackPanel>

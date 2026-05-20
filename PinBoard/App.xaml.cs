@@ -124,6 +124,13 @@ public partial class App : Application
         _settingsWindow.Activate();
     }
 
+    /// Applies the UseTransparency setting to both windows live.
+    public void ApplyTransparencySetting(bool useTransparency)
+    {
+        _settingsWindow?.ApplyTransparency(useTransparency);
+        _popup?.ApplyTransparency(useTransparency);
+    }
+
     /// Re-registers the primary hotkey (called after the user rebinds it in Settings).
     public void RebindPrimaryHotkey()
     {

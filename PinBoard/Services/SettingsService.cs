@@ -43,6 +43,12 @@ public sealed class SettingsService : ISettingsService
         set => Store.Values["IsPinned"] = value;
     }
 
+    public bool UseTransparency
+    {
+        get => Get("UseTransparency", true);
+        set => Store.Values["UseTransparency"] = value;
+    }
+
     private readonly List<string> _excludedApps;
 
     public IReadOnlyList<string> ExcludedApps => _excludedApps;

@@ -17,6 +17,11 @@ public interface ISettingsService
     /// When true, the popup window stays open after a paste (pin-window mode).
     bool IsPinned { get; set; }
 
+    /// When true, both windows draw a translucent Mica/Acrylic backdrop.
+    /// When false, they use solid colours (matches the look before Mica
+    /// was introduced).
+    bool UseTransparency { get; set; }
+
     /// Per-app exclusion list (source-app exe paths, case-insensitive).
     IReadOnlyList<string> ExcludedApps { get; }
 

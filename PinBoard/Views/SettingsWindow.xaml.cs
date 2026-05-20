@@ -3,11 +3,13 @@ using Microsoft.UI;
 using Microsoft.UI.Input;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using PinBoard.Interop;
+using PinBoard.Services;
 using PinBoard.ViewModels;
 using Windows.Graphics;
 using Windows.Win32;
@@ -282,6 +284,12 @@ public sealed partial class SettingsWindow : Window
 
         Title = "PinBoard Settings";
 
+        // Apply initial transparency from the persisted setting. This
+        // sets up the backdrop and the brush colours together.
+        var services = App.Current?.Services;
+        var useTransparency = services?.GetRequiredService<ISettingsService>().UseTransparency ?? true;
+        ApplyTransparency(useTransparency);
+
         int useDark = 1;
         DwmSetWindowAttribute(_hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref useDark, sizeof(int));
 
@@ -360,6 +368,50 @@ public sealed partial class SettingsWindow : Window
         return null;
     }
 
+    // ── Transparency toggle ──────────────────────────────────────────────
+    // Translucent palette: Mica/Acrylic visible behind a semi-transparent
+    // black overlay on the left column, with cards and selected tiles
+    // tinted by a grey-on-grey wash.
+    private static readonly Windows.UI.Color TranslucentLeftColumn = Windows.UI.Color.FromArgb(0x28, 0x00, 0x00, 0x00);
+    private static readonly Windows.UI.Color TranslucentCard       = Windows.UI.Color.FromArgb(0x30, 0x5C, 0x5C, 0x5C);
+    private static readonly Windows.UI.Color TranslucentNavSel     = Windows.UI.Color.FromArgb(0x30, 0x5C, 0x5C, 0x5C);
+
+    // Solid palette: matches the look from before Mica was introduced.
+    private static readonly Windows.UI.Color SolidRoot       = Windows.UI.Color.FromArgb(0xFF, 0x1E, 0x1E, 0x1E);
+    private static readonly Windows.UI.Color SolidLeftColumn = Windows.UI.Color.FromArgb(0xFF, 0x17, 0x17, 0x17);
+    private static readonly Windows.UI.Color SolidCard       = Windows.UI.Color.FromArgb(0xFF, 0x27, 0x27, 0x27);
+    private static readonly Windows.UI.Color SolidNavSel     = Windows.UI.Color.FromArgb(0xFF, 0x24, 0x24, 0x24);
+
+    public void ApplyTransparency(bool useTransparency)
+    {
+        // Swap the backdrop. Mica on Win11+ (build 22000+), Desktop Acrylic
+        // on Win10. Setting SystemBackdrop = null returns to a plain window.
+        SystemBackdrop = useTransparency
+            ? (Environment.OSVersion.Version.Build >= 22000
+                ? new MicaBackdrop()
+                : (SystemBackdrop)new DesktopAcrylicBackdrop())
+            : null;
+
+        // Root grid background can't use a StaticResource on its own
+        // resource dictionary, so set it directly.
+        RootGrid.Background = useTransparency
+            ? new SolidColorBrush(Microsoft.UI.Colors.Transparent)
+            : new SolidColorBrush(SolidRoot);
+
+        // Mutate the named brushes — every Background="{StaticResource ...}"
+        // reference in child XAML picks up the new colour because they all
+        // share the same SolidColorBrush instance.
+        var res = RootGrid.Resources;
+        SetBrush(res, "LeftColumnBrush",  useTransparency ? TranslucentLeftColumn : SolidLeftColumn);
+        SetBrush(res, "CardBrush",        useTransparency ? TranslucentCard       : SolidCard);
+        SetBrush(res, "NavSelectedBrush", useTransparency ? TranslucentNavSel     : SolidNavSel);
+    }
+
+    private static void SetBrush(Microsoft.UI.Xaml.ResourceDictionary res, string key, Windows.UI.Color color)
+    {
+        if (res[key] is SolidColorBrush brush) brush.Color = color;
+    }
+
     private static void ApplyRoundedCorners(IntPtr hwnd)
     {
         var pref = (uint)DWM_WINDOW_CORNER_PREFERENCE.DWMWCP_ROUND;
@@ -434,6 +486,40 @@ public sealed partial class SettingsWindow : Window
         MaximizeGlyph.Glyph = _presenter.State == OverlappedPresenterState.Maximized
             ? GlyphRestore
             : GlyphMaximize;
+    }
+
+    // Style applied to the dialog's primary "Clear" button — soft red
+    // foreground matching the settings-tile button so the destructive
+    // action reads visually as such.
+    private static readonly Style DangerButtonStyle = BuildDangerButtonStyle();
+
+    private static Style BuildDangerButtonStyle()
+    {
+        var style = new Style(typeof(Button));
+        style.Setters.Add(new Setter(
+            Control.ForegroundProperty,
+            new SolidColorBrush(Windows.UI.Color.FromArgb(0xFF, 0xE5, 0x5A, 0x65))));
+        return style;
+    }
+
+    private async void ClearHistoryButton_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new ContentDialog
+        {
+            XamlRoot           = RootGrid.XamlRoot,
+            Title              = "Clear history?",
+            Content            = "All unpinned clipboard items will be removed. Pinned items are preserved.",
+            PrimaryButtonText  = "Clear",
+            PrimaryButtonStyle = DangerButtonStyle,
+            CloseButtonText    = "Cancel",
+            DefaultButton      = ContentDialogButton.Close,
+        };
+
+        if (await dialog.ShowAsync() == ContentDialogResult.Primary
+            && ViewModel.ClearHistoryCommand.CanExecute(null))
+        {
+            ViewModel.ClearHistoryCommand.Execute(null);
+        }
     }
 
     private void MinimizeButton_Click(object sender, RoutedEventArgs e) =>

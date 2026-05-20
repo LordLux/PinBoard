@@ -17,6 +17,7 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     [ObservableProperty] private bool _runAtStartup;
     [ObservableProperty] private bool _historyJustCleared;
+    [ObservableProperty] private bool _useTransparency;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HotkeyDisplay))]
@@ -30,6 +31,13 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     public string HistoryCapDisplay => $"{HistoryCap:N0} items";
 
+    // The toggle's subtitle shows only the relevant backdrop name for the
+    // current OS — Mica on Win11+ (build ≥ 22000), Acrylic on Win10.
+    public string TransparencyDescription =>
+        Environment.OSVersion.Version.Build >= 22000
+            ? "Use Mica for the settings and popup windows. Turn off to use solid colours."
+            : "Use Acrylic for the settings and popup windows. Turn off to use solid colours.";
+
     public bool   ShowHotkeyConflictWarning => !_hotkey.IsRegistered;
     public string HotkeyConflictWarning =>
         "Could not register this hotkey — both RegisterHotKey and the keyboard hook failed. "
@@ -38,12 +46,13 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     public SettingsViewModel(ISettingsService settings, IHistoryStore store, IHotkeyService hotkey)
     {
-        _settings        = settings;
-        _store           = store;
-        _hotkey          = hotkey;
-        _historyCap      = settings.HistoryCap;
-        _hotkeyModifiers = settings.HotkeyModifiers;
-        _hotkeyKey       = settings.HotkeyKey;
+        _settings         = settings;
+        _store            = store;
+        _hotkey           = hotkey;
+        _historyCap       = settings.HistoryCap;
+        _hotkeyModifiers  = settings.HotkeyModifiers;
+        _hotkeyKey        = settings.HotkeyKey;
+        _useTransparency  = settings.UseTransparency;
         _ = LoadStartupStateAsync();
     }
 
@@ -63,6 +72,12 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     partial void OnRunAtStartupChanged(bool value) =>
         _ = ApplyStartupAsync(value);
+
+    partial void OnUseTransparencyChanged(bool value)
+    {
+        _settings.UseTransparency = value;
+        App.Current?.ApplyTransparencySetting(value);
+    }
 
     partial void OnHotkeyModifiersChanged(uint value)
     {

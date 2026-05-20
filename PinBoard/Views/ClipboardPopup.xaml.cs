@@ -71,7 +71,7 @@ public sealed partial class ClipboardPopup : Window
         _appWindow.SetPresenter(presenter);
         _appWindow.IsShownInSwitchers = false;
 
-        SystemBackdrop = new DesktopAcrylicBackdrop();
+        ApplyTransparency(_settings.UseTransparency);
         ApplyRoundedCorners();
         ApplyToolWindowStyle();
 
@@ -91,6 +91,24 @@ public sealed partial class ClipboardPopup : Window
                 DWMWINDOWATTRIBUTE.DWMWA_WINDOW_CORNER_PREFERENCE,
                 &pref, sizeof(uint));
         }
+    }
+
+    // ── Transparency toggle ──────────────────────────────────────────────
+    private static readonly Microsoft.UI.Xaml.Media.SolidColorBrush SolidPopupBg
+        = new(Windows.UI.Color.FromArgb(0xFF, 0x1E, 0x1E, 0x1E));
+
+    public void ApplyTransparency(bool useTransparency)
+    {
+        SystemBackdrop = useTransparency ? new DesktopAcrylicBackdrop() : null;
+
+        // When transparency is off we still want a sensible solid background
+        // (instead of whatever LayerFillColorDefaultBrush resolves to with
+        // no backdrop). Reapply the theme brush when transparency comes
+        // back so we don't permanently override it.
+        if (useTransparency)
+            RootGrid.Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["LayerFillColorDefaultBrush"];
+        else
+            RootGrid.Background = SolidPopupBg;
     }
 
     private void ApplyToolWindowStyle()
