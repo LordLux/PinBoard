@@ -1,9 +1,12 @@
+using System.Runtime.InteropServices;
 using Microsoft.UI;
+using Microsoft.UI.Input;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
+using PinBoard.Interop;
 using PinBoard.Services;
 using PinBoard.ViewModels;
 using Windows.Graphics;
@@ -22,12 +25,63 @@ public sealed partial class ClipboardPopup : Window
     private const int PopupWidth  = 400;
     private const int PopupHeight = 520;
 
+    private const uint WM_NCCALCSIZE                  = 0x0083;
+    private const uint WM_SETCURSOR                   = 0x0020;
+    private const uint WM_ENTERSIZEMOVE               = 0x0231;
+    private const uint WM_EXITSIZEMOVE                = 0x0232;
+    private const int  HTCAPTION                      = 2;
+    private const int  DWMWA_USE_IMMERSIVE_DARK_MODE  = 20;
+
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int value, int size);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, EntryPoint = "LoadImageW")]
+    private static extern IntPtr LoadImage(IntPtr hInst, string name, uint type, int cx, int cy, uint fuLoad);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr SetCursor(IntPtr hCursor);
+
+    private const uint IMAGE_CURSOR    = 2;
+    private const uint LR_LOADFROMFILE = 0x0010;
+
+    // Custom cursors loaded from Assets/. Loaded lazily on first WM_SETCURSOR
+    // hit so the cost isn't paid up-front. _isDragging tracks the OS modal
+    // move loop so we can switch from Grab to Grabbing while the user is
+    // actively dragging the window.
+    private static IntPtr _grabCursor     = IntPtr.Zero;
+    private static IntPtr _grabbingCursor = IntPtr.Zero;
+    private static bool   _isDragging;
+
+    private static IntPtr GetCursor(bool dragging)
+    {
+        if (dragging)
+        {
+            if (_grabbingCursor == IntPtr.Zero)
+                _grabbingCursor = LoadCursorFile("Grabbing.cur");
+            return _grabbingCursor;
+        }
+        if (_grabCursor == IntPtr.Zero)
+            _grabCursor = LoadCursorFile("Grab.cur");
+        return _grabCursor;
+    }
+
+    // cx/cy = 0 + no LR_DEFAULTSIZE → LoadImage returns the cursor at the
+    // exact pixel size stored in the file. Size is whatever the .cur was
+    // authored at; the application doesn't try to scale it.
+    private static IntPtr LoadCursorFile(string name)
+    {
+        var path = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", name);
+        return LoadImage(IntPtr.Zero, path, IMAGE_CURSOR, 0, 0, LR_LOADFROMFILE);
+    }
+
     private readonly IHotkeyService    _hotkey;
     private readonly IWindowPositioner _positioner;
     private readonly ISettingsService  _settings;
     private readonly IPasteService     _paster;
 
-    private AppWindow _appWindow = null!;
+    private AppWindow                    _appWindow = null!;
+    private WindowSubclass?              _subclass;
+    private InputNonClientPointerSource? _ncInput;
     private bool      _isPinned;
     private bool      _firstActivation = true;
 
@@ -66,10 +120,42 @@ public sealed partial class ClipboardPopup : Window
         var windowId = Win32Interop.GetWindowIdFromWindow(Hwnd);
         _appWindow = AppWindow.GetFromWindowId(windowId);
 
-        var presenter = OverlappedPresenter.CreateForContextMenu();
-        presenter.IsAlwaysOnTop = true;
+        // Match SettingsWindow's chrome pattern: borderless Create() presenter
+        // instead of CreateForContextMenu so we control hasBorder/hasTitleBar
+        // explicitly, then collapse the non-client area via WM_NCCALCSIZE
+        // and set DWMWA_USE_IMMERSIVE_DARK_MODE so the system frame paints
+        // dark from the very first frame (avoids the brief black/white flash
+        // when the popup first appears).
+        var presenter = OverlappedPresenter.Create();
+        presenter.SetBorderAndTitleBar(hasBorder: false, hasTitleBar: false);
+        presenter.IsResizable    = false;
+        presenter.IsMaximizable  = false;
+        presenter.IsMinimizable  = false;
+        presenter.IsAlwaysOnTop  = true;
         _appWindow.SetPresenter(presenter);
         _appWindow.IsShownInSwitchers = false;
+
+        int useDark = 1;
+        DwmSetWindowAttribute(Hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref useDark, sizeof(int));
+
+        _subclass = new WindowSubclass(Hwnd, subclassId: 1, OnMessage);
+
+        PInvoke.SetWindowPos(
+            (HWND)Hwnd, HWND.Null, 0, 0, 0, 0,
+            SET_WINDOW_POS_FLAGS.SWP_NOMOVE |
+            SET_WINDOW_POS_FLAGS.SWP_NOSIZE |
+            SET_WINDOW_POS_FLAGS.SWP_NOZORDER |
+            SET_WINDOW_POS_FLAGS.SWP_NOACTIVATE |
+            SET_WINDOW_POS_FLAGS.SWP_FRAMECHANGED);
+
+        _ncInput = InputNonClientPointerSource.GetForWindowId(windowId);
+
+        // The DragHandle has a fixed Width, so its own SizeChanged never
+        // fires when the window resizes from 1×1 (initial off-screen) to
+        // the real popup size — only its position changes (it's centered).
+        // Hook the root Grid's SizeChanged so the caption rect re-registers
+        // every time the window's size changes.
+        RootGrid.SizeChanged += (_, _) => UpdateDragHandleRegion();
 
         ApplyTransparency(_settings.UseTransparency);
         ApplyRoundedCorners();
@@ -79,6 +165,79 @@ public sealed partial class ClipboardPopup : Window
         _appWindow.MoveAndResize(new RectInt32(-32000, -32000, 1, 1));
 
         Activated += OnActivated;
+        Closed    += (_, _) => { _subclass?.Dispose(); _subclass = null; };
+    }
+
+    private static nint? OnMessage(uint msg, nuint wParam, nint lParam)
+    {
+        switch (msg)
+        {
+            case WM_NCCALCSIZE:
+                // Collapse non-client area to zero — kills the white/light
+                // frame strip and gives WinUI 3 full client-area control.
+                if (wParam != 0) return 0;
+                break;
+
+            case WM_SETCURSOR:
+            {
+                // OS-level cursor resolution for caption regions. XAML's
+                // ProtectedCursor doesn't apply to NonClientRegionKind.Caption
+                // areas because the OS treats them as non-client and never
+                // routes the hover to the XAML island. WM_SETCURSOR's lParam
+                // LOWORD holds the WM_NCHITTEST result — when it's HTCAPTION
+                // we load and apply our custom .cur (Grab when idle,
+                // Grabbing during the modal move loop) and return TRUE so
+                // the default handler doesn't overwrite it.
+                int hit = (int)(lParam & 0xFFFF);
+                if (hit == HTCAPTION)
+                {
+                    SetCursor(GetCursor(_isDragging));
+                    return 1;
+                }
+                break;
+            }
+
+            case WM_ENTERSIZEMOVE:
+                // OS modal move/size loop starts. Lock the cursor to Grabbing
+                // for the duration — WM_SETCURSOR keeps firing while the
+                // mouse moves so the next dispatch picks up the new state.
+                _isDragging = true;
+                SetCursor(GetCursor(dragging: true));
+                break;
+
+            case WM_EXITSIZEMOVE:
+                _isDragging = false;
+                break;
+        }
+        return null;
+    }
+
+    private void DragHandle_Loaded(object sender, RoutedEventArgs e) =>
+        UpdateDragHandleRegion();
+
+    private void DragHandle_SizeChanged(object sender, SizeChangedEventArgs e) =>
+        UpdateDragHandleRegion();
+
+    // Register the tiny drag-handle pill as a Caption region with the OS.
+    // The hit area is padded a bit larger than the visible pill so it's
+    // easier to grab. All coords in physical pixels.
+    private void UpdateDragHandleRegion()
+    {
+        if (_ncInput is null || DragHandle.XamlRoot is null) return;
+
+        double scale = DragHandle.XamlRoot.RasterizationScale;
+        var bounds = DragHandle.TransformToVisual(null)
+            .TransformBounds(new Windows.Foundation.Rect(0, 0, DragHandle.ActualWidth, DragHandle.ActualHeight));
+
+        const double padX = 16;
+        const double padY = 8;
+        var rect = new RectInt32(
+            _X:      (int)System.Math.Round((bounds.X - padX) * scale),
+            _Y:      (int)System.Math.Round((bounds.Y - padY) * scale),
+            _Width:  (int)System.Math.Round((bounds.Width  + padX * 2) * scale),
+            _Height: (int)System.Math.Round((bounds.Height + padY * 2) * scale));
+
+        _ncInput.SetRegionRects(NonClientRegionKind.Caption, new[] { rect });
     }
 
     private void ApplyRoundedCorners()

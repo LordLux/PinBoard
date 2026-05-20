@@ -36,6 +36,22 @@
                           ToolTipService.ToolTip="Keep window open (hotkey to close)">
                 <FontIcon Glyph="&#xE840;" FontSize="14"/>
             </ToggleButton>
+
+            <!-- Drag handle pill. The OS caption region (set in code-behind)
+                 pads the hit area beyond the visible bar so it's easy to
+                 grab, and the WM_SETCURSOR subclass handler in the popup
+                 swaps the cursor to SizeAll (4-way arrow) over any caption
+                 region in the window. -->
+            <Border x:Name="DragHandle"
+                    Grid.ColumnSpan="3"
+                    Width="40" Height="4"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Top"
+                    Margin="0,5,0,0"
+                    Background="#66FFFFFF"
+                    CornerRadius="2"
+                    SizeChanged="DragHandle_SizeChanged"
+                    Loaded="DragHandle_Loaded"/>
         </Grid>
 
         <!-- Search box -->
