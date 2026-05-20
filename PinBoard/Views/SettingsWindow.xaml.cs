@@ -130,8 +130,6 @@ public sealed partial class SettingsWindow : Window
         AnimateSwipe(previous, target);
     }
 
-    // Set the visual selection state on all four nav tiles based on which
-    // one is currently active.
     private void ApplyNavSelection(string tag)
     {
         SetTileSelected(NavGeneralBg, NavGeneralBar, tag == "general");
@@ -146,8 +144,6 @@ public sealed partial class SettingsWindow : Window
         bar.Opacity = selected ? 1.0 : 0.0;
     }
 
-    // Hover feedback — applied via the same Bg Border at reduced opacity,
-    // but only when the tile isn't already the active selection.
     private void NavTile_PointerEntered(object sender, PointerRoutedEventArgs e)
     {
         if (sender is not FrameworkElement tile) return;
@@ -282,6 +278,13 @@ public sealed partial class SettingsWindow : Window
 
         _appWindow.Resize(new SizeInt32(InitialWidth, InitialHeight));
 
+        // Taskbar / Alt+Tab icon. ApplicationIcon (csproj) embeds the .ico
+        // into PinBoard.exe so Task Manager / file properties see it, but
+        // WinUI 3's AppWindow doesn't auto-adopt the exe icon — it must
+        // be set explicitly on every window that shows in the shell.
+        var iconPath = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "PinBoardLogo.ico");
+        if (System.IO.File.Exists(iconPath)) _appWindow.SetIcon(iconPath);
+
         Title = "PinBoard Settings";
 
         // Apply initial transparency from the persisted setting. This
@@ -298,9 +301,8 @@ public sealed partial class SettingsWindow : Window
 
         ApplyRoundedCorners(_hwnd);
 
-        // Subclass first so WM_NCCALCSIZE / WM_GETMINMAXINFO interception is
-        // active when SetWindowPos(SWP_FRAMECHANGED) forces the system to
-        // recompute the frame geometry. Order matters here.
+        // Subclass must be installed BEFORE SetWindowPos(SWP_FRAMECHANGED) so
+        // WM_NCCALCSIZE / WM_GETMINMAXINFO are intercepted on the first pass.
         _subclass = new WindowSubclass(_hwnd, subclassId: 1, OnMessage);
 
         PInvoke.SetWindowPos(
@@ -313,10 +315,9 @@ public sealed partial class SettingsWindow : Window
 
         _ncInput = InputNonClientPointerSource.GetForWindowId(windowId);
 
-        // AppWindow.Changed fires on size/position transitions — including
-        // when the OS maximize/restore happens via a drag-region double-
-        // click, which never enters our XAML button handler. Use it to
-        // keep the maximize-button glyph in sync.
+        // Keep the max-button glyph in sync with the OS maximize/restore
+        // state — covers the drag-region double-click path that bypasses
+        // our XAML button handler.
         _appWindow.Changed += (_, args) =>
         {
             if (args.DidSizeChange) UpdateMaximizeGlyph();
@@ -384,23 +385,20 @@ public sealed partial class SettingsWindow : Window
 
     public void ApplyTransparency(bool useTransparency)
     {
-        // Swap the backdrop. Mica on Win11+ (build 22000+), Desktop Acrylic
-        // on Win10. Setting SystemBackdrop = null returns to a plain window.
+        // Mica on Win11+ (build 22000+), Desktop Acrylic on Win10, null = solid.
         SystemBackdrop = useTransparency
             ? (Environment.OSVersion.Version.Build >= 22000
                 ? new MicaBackdrop()
                 : (SystemBackdrop)new DesktopAcrylicBackdrop())
             : null;
 
-        // Root grid background can't use a StaticResource on its own
-        // resource dictionary, so set it directly.
+        // RootGrid.Background is set directly — StaticResource on the same
+        // Grid's own resource dictionary doesn't resolve at parse time.
         RootGrid.Background = useTransparency
             ? new SolidColorBrush(Microsoft.UI.Colors.Transparent)
             : new SolidColorBrush(SolidRoot);
 
-        // Mutate the named brushes — every Background="{StaticResource ...}"
-        // reference in child XAML picks up the new colour because they all
-        // share the same SolidColorBrush instance.
+        // Mutate brush instances in place so every StaticResource binding picks up the new colour.
         var res = RootGrid.Resources;
         SetBrush(res, "LeftColumnBrush",  useTransparency ? TranslucentLeftColumn : SolidLeftColumn);
         SetBrush(res, "CardBrush",        useTransparency ? TranslucentCard       : SolidCard);

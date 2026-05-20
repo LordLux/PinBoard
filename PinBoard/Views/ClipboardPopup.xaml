@@ -7,10 +7,11 @@
 
     <Grid x:Name="RootGrid" Background="{ThemeResource LayerFillColorDefaultBrush}" KeyDown="RootGrid_KeyDown">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>   <!-- Title bar -->
+            <RowDefinition Height="Auto"/>   <!-- Filter tabs -->
+            <RowDefinition Height="Auto"/>   <!-- Search box -->
+            <RowDefinition Height="*"/>      <!-- Items list -->
+            <RowDefinition Height="Auto"/>   <!-- Footer -->
         </Grid.RowDefinitions>
 
         <!-- Title bar -->
@@ -54,9 +55,75 @@
                     Loaded="DragHandle_Loaded"/>
         </Grid>
 
+        <!-- Filter tab strip. Each tab is a tinted pill (Bg Border at low
+             opacity by default, full opacity when selected — same manual-
+             selection pattern as the Settings nav tiles, since RadioButton
+             VisualState transitions proved unreliable). Click selects;
+             hover-to-switch (with 250ms delay) optionally selects when the
+             user has the matching setting enabled. -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal"
+                    HorizontalAlignment="Stretch"
+                    Margin="8,0,8,6" Spacing="4">
+            <Grid x:Name="TabAll"     Tag="all"     Width="64" Height="24"
+                  Background="Transparent"
+                  Tapped="NavTab_Tapped"
+                  PointerEntered="NavTab_PointerEntered"
+                  PointerExited="NavTab_PointerExited">
+                <Border x:Name="TabAllBg"
+                        Background="#B19CD9" CornerRadius="10" Opacity="0.35"/>
+                <TextBlock Text="All" FontSize="12" FontWeight="SemiBold"
+                           Foreground="White"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Grid>
+            <Grid x:Name="TabText"    Tag="text"    Width="64" Height="24"
+                  Background="Transparent"
+                  Tapped="NavTab_Tapped"
+                  PointerEntered="NavTab_PointerEntered"
+                  PointerExited="NavTab_PointerExited">
+                <Border x:Name="TabTextBg"
+                        Background="#9CCC9C" CornerRadius="10" Opacity="0.35"/>
+                <TextBlock Text="Text" FontSize="12" FontWeight="SemiBold"
+                           Foreground="White"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Grid>
+            <Grid x:Name="TabImage"   Tag="image"   Width="64" Height="24"
+                  Background="Transparent"
+                  Tapped="NavTab_Tapped"
+                  PointerEntered="NavTab_PointerEntered"
+                  PointerExited="NavTab_PointerExited">
+                <Border x:Name="TabImageBg"
+                        Background="#FFD78C" CornerRadius="10" Opacity="0.35"/>
+                <TextBlock Text="Image" FontSize="12" FontWeight="SemiBold"
+                           Foreground="White"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Grid>
+            <Grid x:Name="TabFile"    Tag="files"   Width="64" Height="24"
+                  Background="Transparent"
+                  Tapped="NavTab_Tapped"
+                  PointerEntered="NavTab_PointerEntered"
+                  PointerExited="NavTab_PointerExited">
+                <Border x:Name="TabFileBg"
+                        Background="#9CB5FF" CornerRadius="10" Opacity="0.35"/>
+                <TextBlock Text="File" FontSize="12" FontWeight="SemiBold"
+                           Foreground="White"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Grid>
+            <Grid x:Name="TabCollect" Tag="collect" Width="64" Height="24"
+                  Background="Transparent"
+                  Tapped="NavTab_Tapped"
+                  PointerEntered="NavTab_PointerEntered"
+                  PointerExited="NavTab_PointerExited">
+                <Border x:Name="TabCollectBg"
+                        Background="#D9B19C" CornerRadius="10" Opacity="0.35"/>
+                <TextBlock Text="Collect" FontSize="12" FontWeight="SemiBold"
+                           Foreground="White"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Grid>
+        </StackPanel>
+
         <!-- Search box -->
         <TextBox x:Name="SearchBox"
-                 Grid.Row="1"
+                 Grid.Row="2"
                  Margin="8,0,8,4"
                  PlaceholderText="Search history..."
                  Text="{x:Bind ViewModel.SearchQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
@@ -67,7 +134,7 @@
 
         <!-- History list -->
         <ListView x:Name="ItemsList"
-                  Grid.Row="2"
+                  Grid.Row="3"
                   Margin="4,0,4,0"
                   SelectionMode="Single"
                   IsItemClickEnabled="True"
@@ -176,7 +243,7 @@
         </ListView>
 
         <!-- Footer -->
-        <Grid Grid.Row="3" Padding="12,4,12,10">
+        <Grid Grid.Row="4" Padding="12,4,12,10">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>

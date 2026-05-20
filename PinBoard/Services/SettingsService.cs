@@ -49,6 +49,30 @@ public sealed class SettingsService : ISettingsService
         set => Store.Values["UseTransparency"] = value;
     }
 
+    public int TtlDays
+    {
+        get => Get("TtlDays", 0);
+        set => Store.Values["TtlDays"] = value;
+    }
+
+    public bool HoverSwitchGroup
+    {
+        get => Get("HoverSwitchGroup", false);
+        set => Store.Values["HoverSwitchGroup"] = value;
+    }
+
+    public string DefaultOpenGroup
+    {
+        get => Get<string>("DefaultOpenGroup", "all");
+        set => Store.Values["DefaultOpenGroup"] = value;
+    }
+
+    public string LastSelectedGroup
+    {
+        get => Get<string>("LastSelectedGroup", "all");
+        set => Store.Values["LastSelectedGroup"] = value;
+    }
+
     private readonly List<string> _excludedApps;
 
     public IReadOnlyList<string> ExcludedApps => _excludedApps;

@@ -91,13 +91,22 @@
                     SizeChanged="DragRegion_SizeChanged"
                     Loaded="DragRegion_Loaded"/>
 
-            <TextBlock Grid.Row="0"
-                       Text="Settings"
-                       VerticalAlignment="Center"
-                       Margin="14,0,0,0"
-                       Foreground="White"
-                       FontSize="12"
-                       IsHitTestVisible="False"/>
+            <!-- App icon + window title, displayed over the drag-bar's left
+                 half. IsHitTestVisible="False" lets pointer events fall
+                 through to the OS drag region. -->
+            <StackPanel Grid.Row="0" Orientation="Horizontal"
+                        VerticalAlignment="Center"
+                        Margin="10,0,0,0"
+                        IsHitTestVisible="False">
+                <Image Source="ms-appx:///Assets/Square44x44Logo.scale-200.png"
+                       Width="16" Height="16"
+                       Margin="0,0,8,5"
+                       VerticalAlignment="Center"/>
+                <TextBlock Text="Settings"
+                           Foreground="White"
+                           FontSize="12"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
 
         <!-- ══════════════════════════════════════════════════════════════
              LEFT COLUMN — nav tiles. Plain Grids with manual selection
@@ -297,6 +306,53 @@
                                           IsOn="{x:Bind ViewModel.UseTransparency, Mode=TwoWay}"/>
                         </Grid>
                     </Border>
+
+                    <Border Style="{StaticResource CardStyle}">
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <FontIcon Grid.Column="0" Style="{StaticResource CardIconStyle}" Glyph="&#xE8B7;"/>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                <TextBlock Style="{StaticResource CardTitleStyle}"    Text="Hover to switch group"/>
+                                <TextBlock Style="{StaticResource CardSubtitleStyle}" Text="Switch the clipboard popup's group by hovering its tab instead of clicking."/>
+                            </StackPanel>
+                            <ToggleSwitch Grid.Column="2"
+                                          VerticalAlignment="Center"
+                                          MinWidth="0"
+                                          OnContent="On" OffContent="Off"
+                                          IsOn="{x:Bind ViewModel.HoverSwitchGroup, Mode=TwoWay}"/>
+                        </Grid>
+                    </Border>
+
+                    <Border Style="{StaticResource CardStyle}">
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <FontIcon Grid.Column="0" Style="{StaticResource CardIconStyle}" Glyph="&#xE71D;"/>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                <TextBlock Style="{StaticResource CardTitleStyle}"    Text="Default open group"/>
+                                <TextBlock Style="{StaticResource CardSubtitleStyle}" Text="Which group the popup starts on each time it opens."/>
+                            </StackPanel>
+                            <ComboBox Grid.Column="2"
+                                      VerticalAlignment="Center"
+                                      MinWidth="140"
+                                      SelectedValuePath="Tag"
+                                      SelectedValue="{x:Bind ViewModel.DefaultOpenGroup, Mode=TwoWay}">
+                                <ComboBoxItem Content="Last used" Tag="last"/>
+                                <ComboBoxItem Content="All"       Tag="all"/>
+                                <ComboBoxItem Content="Text"      Tag="text"/>
+                                <ComboBoxItem Content="Image"     Tag="image"/>
+                                <ComboBoxItem Content="File"      Tag="files"/>
+                                <ComboBoxItem Content="Collect"   Tag="collect"/>
+                            </ComboBox>
+                        </Grid>
+                    </Border>
                 </StackPanel>
 
                 <!-- ── HOTKEY ─────────────────────────────────────────────── -->
@@ -372,6 +428,48 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
+                            <FontIcon Grid.Column="0" Style="{StaticResource CardIconStyle}" Glyph="&#xE823;"/>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                <TextBlock Style="{StaticResource CardTitleStyle}"    Text="Storage time limit"/>
+                                <TextBlock Style="{StaticResource CardSubtitleStyle}" Text="Drop unpinned items older than this period. Pinned items are never auto-expired."/>
+                            </StackPanel>
+                            <ComboBox Grid.Column="2"
+                                      VerticalAlignment="Center"
+                                      MinWidth="140"
+                                      SelectedValuePath="Tag"
+                                      SelectedValue="{x:Bind ViewModel.TtlDays, Mode=TwoWay}">
+                                <ComboBoxItem Content="Unlimited">
+                                    <ComboBoxItem.Tag><x:Int32>0</x:Int32></ComboBoxItem.Tag>
+                                </ComboBoxItem>
+                                <ComboBoxItem Content="Day">
+                                    <ComboBoxItem.Tag><x:Int32>1</x:Int32></ComboBoxItem.Tag>
+                                </ComboBoxItem>
+                                <ComboBoxItem Content="Week">
+                                    <ComboBoxItem.Tag><x:Int32>7</x:Int32></ComboBoxItem.Tag>
+                                </ComboBoxItem>
+                                <ComboBoxItem Content="Month">
+                                    <ComboBoxItem.Tag><x:Int32>30</x:Int32></ComboBoxItem.Tag>
+                                </ComboBoxItem>
+                                <ComboBoxItem Content="Quarter">
+                                    <ComboBoxItem.Tag><x:Int32>90</x:Int32></ComboBoxItem.Tag>
+                                </ComboBoxItem>
+                                <ComboBoxItem Content="Half a year">
+                                    <ComboBoxItem.Tag><x:Int32>180</x:Int32></ComboBoxItem.Tag>
+                                </ComboBoxItem>
+                                <ComboBoxItem Content="Year">
+                                    <ComboBoxItem.Tag><x:Int32>365</x:Int32></ComboBoxItem.Tag>
+                                </ComboBoxItem>
+                            </ComboBox>
+                        </Grid>
+                    </Border>
+
+                    <Border Style="{StaticResource CardStyle}">
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
                             <FontIcon Grid.Column="0" Style="{StaticResource CardIconStyle}" Glyph="&#xE74D;"/>
                             <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
                                 <TextBlock Style="{StaticResource CardTitleStyle}"    Text="Clear history"/>
@@ -383,7 +481,7 @@
                                            Margin="0,4,0,0"/>
                             </StackPanel>
                             <Button Grid.Column="2"
-                                    Content="Clear"
+                                    Content="Clear History"
                                     Foreground="#E55A65"
                                     VerticalAlignment="Center"
                                     Click="ClearHistoryButton_Click"/>

@@ -134,25 +134,98 @@ public sealed class SqliteHistoryStore : IHistoryStore
         await Exec("DELETE FROM items WHERE id = @id", ("@id", id));
     }
 
-    public async Task<IReadOnlyList<ClipItem>> GetRecentAsync(int limit = 100) =>
-        await QueryItems(
-            "SELECT * FROM items ORDER BY pinned DESC, created_utc DESC LIMIT @lim",
-            ("@lim", limit));
-
-    public async Task<IReadOnlyList<ClipItem>> SearchAsync(string query, int limit = 50)
+    public async Task<IReadOnlyList<ClipItem>> GetRecentAsync(
+        int limit = 100,
+        IReadOnlyCollection<ClipItemKind>? kinds = null,
+        bool pinnedOnly = false)
     {
-        if (string.IsNullOrWhiteSpace(query)) return await GetRecentAsync(limit);
+        var parameters = new List<(string, object?)>();
+        var filters    = BuildFilterClause(kinds, pinnedOnly, parameters);
+        parameters.Add(("@lim", limit));
+
+        var sql = "SELECT * FROM items"
+                + (filters.Length > 0 ? " WHERE " + filters : "")
+                + " ORDER BY pinned DESC, created_utc DESC LIMIT @lim";
+
+        return await QueryItems(sql, parameters.ToArray());
+    }
+
+    public async Task<IReadOnlyList<ClipItem>> SearchAsync(
+        string query,
+        int limit = 50,
+        IReadOnlyCollection<ClipItemKind>? kinds = null,
+        bool pinnedOnly = false)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+            return await GetRecentAsync(limit, kinds, pinnedOnly);
 
         // Escape FTS5 special characters.
         var safeQuery = query.Replace("\"", "\"\"");
-        return await QueryItems("""
-            SELECT items.* FROM items
-            JOIN items_fts ON items.id = items_fts.rowid
-            WHERE items_fts MATCH @q
-            ORDER BY items_fts.rank
-            LIMIT @lim
-            """,
-            ("@q", $"\"{safeQuery}\""), ("@lim", limit));
+
+        var parameters = new List<(string, object?)>
+        {
+            ("@q", $"\"{safeQuery}\""),
+        };
+        var filters = BuildFilterClause(kinds, pinnedOnly, parameters);
+        parameters.Add(("@lim", limit));
+
+        var sql = "SELECT items.* FROM items"
+                + " JOIN items_fts ON items.id = items_fts.rowid"
+                + " WHERE items_fts MATCH @q"
+                + (filters.Length > 0 ? " AND " + filters : "")
+                + " ORDER BY items_fts.rank LIMIT @lim";
+
+        return await QueryItems(sql, parameters.ToArray());
+    }
+
+    // Builds a fragment like "pinned = 1 AND kind IN (@k0, @k1)" suitable for
+    // appending after WHERE or AND. Appends matching parameter tuples to
+    // `output`. Returns "" when no filters apply so the caller can skip the
+    // leading keyword.
+    private static string BuildFilterClause(
+        IReadOnlyCollection<ClipItemKind>? kinds,
+        bool pinnedOnly,
+        List<(string, object?)> output)
+    {
+        var parts = new List<string>();
+
+        if (pinnedOnly) parts.Add("pinned = 1");
+
+        if (kinds is { Count: > 0 })
+        {
+            var i      = 0;
+            var names  = new List<string>(kinds.Count);
+            foreach (var k in kinds)
+            {
+                var name = $"@k{i++}";
+                names.Add(name);
+                output.Add((name, k.ToString()));
+            }
+            parts.Add($"kind IN ({string.Join(", ", names)})");
+        }
+
+        return string.Join(" AND ", parts);
+    }
+
+    public async Task<int> SweepExpiredAsync(int days)
+    {
+        if (days <= 0 || _db is null) return 0;
+
+        var cutoff = DateTimeOffset.UtcNow.AddDays(-days).ToUnixTimeMilliseconds();
+
+        // Remove the payload files first so they don't leak after the rows go.
+        var paths = await QueryColumnAsync<string>(
+            "SELECT payload_path FROM items WHERE pinned = 0 AND created_utc < @c",
+            ("@c", cutoff));
+
+        foreach (var p in paths)
+            if (p is not null && File.Exists(p))
+                try { File.Delete(p); } catch { /* best-effort */ }
+
+        using var cmd = _db.CreateCommand();
+        cmd.CommandText = "DELETE FROM items WHERE pinned = 0 AND created_utc < @c";
+        cmd.Parameters.AddWithValue("@c", cutoff);
+        return await cmd.ExecuteNonQueryAsync();
     }
 
     public async Task ClearUnpinnedAsync()

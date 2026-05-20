@@ -22,6 +22,22 @@ public interface ISettingsService
     /// was introduced).
     bool UseTransparency { get; set; }
 
+    /// Auto-expire unpinned items older than this many days. 0 = unlimited
+    /// (never auto-expire). Pinned items are never affected.
+    int TtlDays { get; set; }
+
+    /// When true, hovering a popup filter tab selects it after a short
+    /// delay instead of requiring a click.
+    bool HoverSwitchGroup { get; set; }
+
+    /// Which group the popup starts on each open. One of
+    /// "last" / "all" / "text" / "image" / "files" / "collect".
+    string DefaultOpenGroup { get; set; }
+
+    /// Internal — persists the last user-chosen group, used when
+    /// DefaultOpenGroup == "last".
+    string LastSelectedGroup { get; set; }
+
     /// Per-app exclusion list (source-app exe paths, case-insensitive).
     IReadOnlyList<string> ExcludedApps { get; }
 

@@ -16,13 +16,26 @@ public interface IHistoryStore : IAsyncDisposable
     Task DeleteAsync(long id);
 
     /// Returns the most recent items ordered by (pinned DESC, created DESC).
-    Task<IReadOnlyList<ClipItem>> GetRecentAsync(int limit = 100);
+    /// Optionally filter by kind(s) and/or pinned-only.
+    Task<IReadOnlyList<ClipItem>> GetRecentAsync(
+        int limit = 100,
+        IReadOnlyCollection<ClipItemKind>? kinds = null,
+        bool pinnedOnly = false);
 
     /// Full-text search via FTS5; returns matches ordered by rank.
-    Task<IReadOnlyList<ClipItem>> SearchAsync(string query, int limit = 50);
+    /// Optionally filter by kind(s) and/or pinned-only.
+    Task<IReadOnlyList<ClipItem>> SearchAsync(
+        string query,
+        int limit = 50,
+        IReadOnlyCollection<ClipItemKind>? kinds = null,
+        bool pinnedOnly = false);
 
     Task ClearUnpinnedAsync();
 
     /// Deletes the oldest unpinned items so at most keepCount remain.
     Task EvictOldestAsync(int keepCount);
+
+    /// Deletes unpinned items older than the cutoff. days == 0 is a no-op
+    /// (interpreted as "unlimited"). Returns the number of rows removed.
+    Task<int> SweepExpiredAsync(int days);
 }

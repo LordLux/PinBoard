@@ -18,6 +18,13 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private bool _runAtStartup;
     [ObservableProperty] private bool _historyJustCleared;
     [ObservableProperty] private bool _useTransparency;
+    [ObservableProperty] private bool _hoverSwitchGroup;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TtlDescription))]
+    private int _ttlDays;
+
+    [ObservableProperty] private string _defaultOpenGroup = "all";
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HotkeyDisplay))]
@@ -30,6 +37,19 @@ public sealed partial class SettingsViewModel : ObservableObject
     public string HotkeyDisplay => FormatHotkey(HotkeyModifiers, HotkeyKey);
 
     public string HistoryCapDisplay => $"{HistoryCap:N0} items";
+
+    // Friendly name for the current TTL value (used in the History card subtitle).
+    public string TtlDescription => TtlDays switch
+    {
+        0   => "Unlimited",
+        1   => "Day",
+        7   => "Week",
+        30  => "Month",
+        90  => "Quarter",
+        180 => "Half a year",
+        365 => "Year",
+        _   => $"{TtlDays} days",
+    };
 
     // The toggle's subtitle shows only the relevant backdrop name for the
     // current OS — Mica on Win11+ (build ≥ 22000), Acrylic on Win10.
@@ -53,6 +73,9 @@ public sealed partial class SettingsViewModel : ObservableObject
         _hotkeyModifiers  = settings.HotkeyModifiers;
         _hotkeyKey        = settings.HotkeyKey;
         _useTransparency  = settings.UseTransparency;
+        _ttlDays          = settings.TtlDays;
+        _hoverSwitchGroup = settings.HoverSwitchGroup;
+        _defaultOpenGroup = settings.DefaultOpenGroup;
         _ = LoadStartupStateAsync();
     }
 
@@ -78,6 +101,19 @@ public sealed partial class SettingsViewModel : ObservableObject
         _settings.UseTransparency = value;
         App.Current?.ApplyTransparencySetting(value);
     }
+
+    partial void OnTtlDaysChanged(int value)
+    {
+        _settings.TtlDays = value;
+        // Apply immediately — drop any rows that fell past the new cutoff.
+        App.Current?.SweepExpiredHistory(value);
+    }
+
+    partial void OnHoverSwitchGroupChanged(bool value) =>
+        _settings.HoverSwitchGroup = value;
+
+    partial void OnDefaultOpenGroupChanged(string value) =>
+        _settings.DefaultOpenGroup = value;
 
     partial void OnHotkeyModifiersChanged(uint value)
     {

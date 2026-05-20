@@ -120,12 +120,8 @@ public sealed partial class ClipboardPopup : Window
         var windowId = Win32Interop.GetWindowIdFromWindow(Hwnd);
         _appWindow = AppWindow.GetFromWindowId(windowId);
 
-        // Match SettingsWindow's chrome pattern: borderless Create() presenter
-        // instead of CreateForContextMenu so we control hasBorder/hasTitleBar
-        // explicitly, then collapse the non-client area via WM_NCCALCSIZE
-        // and set DWMWA_USE_IMMERSIVE_DARK_MODE so the system frame paints
-        // dark from the very first frame (avoids the brief black/white flash
-        // when the popup first appears).
+        // Borderless presenter + dark immersive frame: matches SettingsWindow,
+        // avoids the black flash on first paint.
         var presenter = OverlappedPresenter.Create();
         presenter.SetBorderAndTitleBar(hasBorder: false, hasTitleBar: false);
         presenter.IsResizable    = false;
@@ -134,6 +130,9 @@ public sealed partial class ClipboardPopup : Window
         presenter.IsAlwaysOnTop  = true;
         _appWindow.SetPresenter(presenter);
         _appWindow.IsShownInSwitchers = false;
+
+        var iconPath = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "PinBoardLogo.ico");
+        if (System.IO.File.Exists(iconPath)) _appWindow.SetIcon(iconPath);
 
         int useDark = 1;
         DwmSetWindowAttribute(Hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref useDark, sizeof(int));
@@ -150,11 +149,9 @@ public sealed partial class ClipboardPopup : Window
 
         _ncInput = InputNonClientPointerSource.GetForWindowId(windowId);
 
-        // The DragHandle has a fixed Width, so its own SizeChanged never
-        // fires when the window resizes from 1×1 (initial off-screen) to
-        // the real popup size — only its position changes (it's centered).
-        // Hook the root Grid's SizeChanged so the caption rect re-registers
-        // every time the window's size changes.
+        // DragHandle has fixed Width, so its own SizeChanged never fires when
+        // the window resizes from 1×1 to the real popup size — only its X
+        // position changes (it's centred). Re-register on the root instead.
         RootGrid.SizeChanged += (_, _) => UpdateDragHandleRegion();
 
         ApplyTransparency(_settings.UseTransparency);
@@ -180,14 +177,9 @@ public sealed partial class ClipboardPopup : Window
 
             case WM_SETCURSOR:
             {
-                // OS-level cursor resolution for caption regions. XAML's
-                // ProtectedCursor doesn't apply to NonClientRegionKind.Caption
-                // areas because the OS treats them as non-client and never
-                // routes the hover to the XAML island. WM_SETCURSOR's lParam
-                // LOWORD holds the WM_NCHITTEST result — when it's HTCAPTION
-                // we load and apply our custom .cur (Grab when idle,
-                // Grabbing during the modal move loop) and return TRUE so
-                // the default handler doesn't overwrite it.
+                // ProtectedCursor doesn't apply over Caption regions (the OS
+                // treats them as non-client). Lparam LOWORD = hit-test result;
+                // return 1 to keep our cursor instead of the default arrow.
                 int hit = (int)(lParam & 0xFFFF);
                 if (hit == HTCAPTION)
                 {
@@ -198,9 +190,6 @@ public sealed partial class ClipboardPopup : Window
             }
 
             case WM_ENTERSIZEMOVE:
-                // OS modal move/size loop starts. Lock the cursor to Grabbing
-                // for the duration — WM_SETCURSOR keeps firing while the
-                // mouse moves so the next dispatch picks up the new state.
                 _isDragging = true;
                 SetCursor(GetCursor(dragging: true));
                 break;
@@ -260,10 +249,6 @@ public sealed partial class ClipboardPopup : Window
     {
         SystemBackdrop = useTransparency ? new DesktopAcrylicBackdrop() : null;
 
-        // When transparency is off we still want a sensible solid background
-        // (instead of whatever LayerFillColorDefaultBrush resolves to with
-        // no backdrop). Reapply the theme brush when transparency comes
-        // back so we don't permanently override it.
         if (useTransparency)
             RootGrid.Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["LayerFillColorDefaultBrush"];
         else
@@ -296,6 +281,12 @@ public sealed partial class ClipboardPopup : Window
     {
         // Stash before the popup steals focus.
         _paster.StashForegroundWindow();
+
+        // Apply the "Default open group" setting BEFORE the refresh so the
+        // first list query uses the right filter. Updates the tab highlight
+        // too if it changed.
+        ViewModel.ApplyDefaultGroupOnOpen();
+        ApplyTabSelection(ViewModel.SelectedGroup);
 
         var pos = _positioner.GetPopupPosition(new SizeInt32(PopupWidth, PopupHeight));
         _appWindow.MoveAndResize(new RectInt32(pos.X, pos.Y, PopupWidth, PopupHeight));
@@ -360,6 +351,74 @@ public sealed partial class ClipboardPopup : Window
     private void SettingsButton_Click(object sender, RoutedEventArgs e) =>
         App.Current?.ShowSettingsWindow();
 
+    // ── Filter tabs ──────────────────────────────────────────────────────────
+
+    // Hover-switch timer: when the user hovers a tab and the matching setting
+    // is on, we wait ~250ms before switching to that group. Lets the user
+    // sweep past tabs without thrashing the underlying list query.
+    private const int HoverSwitchDelayMs = 250;
+    private Microsoft.UI.Dispatching.DispatcherQueueTimer? _hoverTimer;
+    private string? _pendingHoverGroup;
+
+    private void NavTab_Tapped(object sender, TappedRoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement el) return;
+        var tag = el.Tag as string ?? "all";
+        SelectTab(tag);
+    }
+
+    private void NavTab_PointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        if (!_settings.HoverSwitchGroup) return;
+        if (sender is not FrameworkElement el) return;
+        var tag = el.Tag as string ?? "all";
+        if (tag == ViewModel.SelectedGroup) return;
+
+        _pendingHoverGroup = tag;
+        if (_hoverTimer is null) _hoverTimer = DispatcherQueue.CreateTimer();
+        _hoverTimer.Interval = TimeSpan.FromMilliseconds(HoverSwitchDelayMs);
+        _hoverTimer.IsRepeating = false;
+        _hoverTimer.Stop();
+        _hoverTimer.Tick -= OnHoverTimerTick;
+        _hoverTimer.Tick += OnHoverTimerTick;
+        _hoverTimer.Start();
+    }
+
+    private void NavTab_PointerExited(object sender, PointerRoutedEventArgs e)
+    {
+        _hoverTimer?.Stop();
+        _pendingHoverGroup = null;
+    }
+
+    private void OnHoverTimerTick(Microsoft.UI.Dispatching.DispatcherQueueTimer sender, object args)
+    {
+        sender.Stop();
+        if (_pendingHoverGroup is { } tag) SelectTab(tag);
+        _pendingHoverGroup = null;
+    }
+
+    private void SelectTab(string tag)
+    {
+        if (ViewModel.SelectedGroup == tag) return;
+        ViewModel.SelectedGroup = tag;   // triggers VM refresh
+        ApplyTabSelection(tag);
+    }
+
+    // Mirrors ApplyNavSelection in SettingsWindow: each tab's background
+    // Border opacity is set explicitly so selection survives every state
+    // transition (RadioButton-style VisualStates are unreliable in WinUI 3).
+    private void ApplyTabSelection(string tag)
+    {
+        SetTabSelected(TabAllBg,     tag == "all");
+        SetTabSelected(TabTextBg,    tag == "text");
+        SetTabSelected(TabImageBg,   tag == "image");
+        SetTabSelected(TabFileBg,    tag == "files");
+        SetTabSelected(TabCollectBg, tag == "collect");
+    }
+
+    private static void SetTabSelected(FrameworkElement bg, bool selected) =>
+        bg.Opacity = selected ? 1.0 : 0.35;
+
     // Apply outer-corner rounding so the hover highlight aligns with the
     // popup's rounded overlay: first item rounds the top corners, last item
     // rounds the bottom corners, and a single item rounds all four.
@@ -393,9 +452,24 @@ public sealed partial class ClipboardPopup : Window
     private async void RootGrid_KeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs args)
     {
         var key = args.Key;
+
+        // Ctrl+, → open Settings (popup must be focused for KeyDown to fire here).
+        if (key == (VirtualKey)0xBC /* OemComma */)
+        {
+            var ctrlDown = Microsoft.UI.Input.InputKeyboardSource
+                .GetKeyStateForCurrentThread(VirtualKey.Control)
+                .HasFlag(CoreVirtualKeyStates.Down);
+            if (ctrlDown)
+            {
+                args.Handled = true;
+                App.Current?.ShowSettingsWindow();
+                return;
+            }
+        }
+
         if (key < VirtualKey.Number1 || key > VirtualKey.Number9) return;
 
-        var idx = (int)key - (int)VirtualKey.Number1; // 0-based
+        var idx = (int)key - (int)VirtualKey.Number1;
         if (idx >= ViewModel.Items.Count) return;
 
         args.Handled = true;

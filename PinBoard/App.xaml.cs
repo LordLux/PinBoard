@@ -77,6 +77,12 @@ public partial class App : Application
             await store.InitializeAsync();
 
             var settings  = Services.GetRequiredService<ISettingsService>();
+
+            // Drop unpinned items past their TTL on every launch — cheap and
+            // catches items that aged out while the app was closed. Safe
+            // to fire-and-forget because failures only mean a delayed sweep.
+            _ = store.SweepExpiredAsync(settings.TtlDays);
+
             var clipboard = Services.GetRequiredService<IClipboardService>();
             var viewModel = Services.GetRequiredService<ClipboardPopupViewModel>();
 
@@ -129,6 +135,14 @@ public partial class App : Application
     {
         _settingsWindow?.ApplyTransparency(useTransparency);
         _popup?.ApplyTransparency(useTransparency);
+    }
+
+    /// Runs the TTL sweep on demand — called when the user changes the
+    /// TtlDays setting so the change takes effect without restarting.
+    public void SweepExpiredHistory(int days)
+    {
+        var store = Services.GetRequiredService<IHistoryStore>();
+        _ = store.SweepExpiredAsync(days);
     }
 
     /// Re-registers the primary hotkey (called after the user rebinds it in Settings).
