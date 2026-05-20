@@ -36,6 +36,9 @@ public sealed partial class SettingsWindow : Window
     private const uint WM_NCCALCSIZE    = 0x0083;
     private const uint WM_GETMINMAXINFO = 0x0024;
 
+    // DIPs of resize handle thickness inside each edge of the window.
+    private const int ResizeBorderDip = 6;
+
     // Segoe MDL2 Assets glyphs for the maximize button.  = ChromeMaximize
     // (a square outline),  = ChromeRestore (overlapping squares — shown
     // when the window is already maximized).
@@ -375,17 +378,24 @@ public sealed partial class SettingsWindow : Window
     private void DragRegion_SizeChanged(object sender, SizeChangedEventArgs e) =>
         UpdateDragRegion();
 
-    // Register TWO caption regions: the title-bar area in the left column
-    // (full width of the column) and the right-column overlay (full width
-    // minus the CaptionButtons). Both are passed to SetRegionRects in a
-    // single array. Coordinates are physical pixels relative to the
-    // window's top-left.
+    // Register the non-client regions with the platform:
+    //   • Caption: the title-bar area in the left column and the right-
+    //     column overlay (minus the CaptionButtons bounds) — handles
+    //     window drag.
+    //   • TopBorder / LeftBorder / RightBorder / BottomBorder: thin
+    //     strips along each edge — handles window resize. These replace
+    //     a manual WM_NCHITTEST handler; the platform path is what
+    //     actually drives cursor changes and the resize loop through
+    //     the XAML island, so DIY hit-testing only worked on the top
+    //     edge (where it overlapped the caption region).
+    // All rects are in physical pixels relative to the window's top-left.
     private void UpdateDragRegion()
     {
         if (_ncInput is null || DragRegionLeft.XamlRoot is null) return;
 
         double scale = DragRegionLeft.XamlRoot.RasterizationScale;
 
+        // ── Caption rects ─────────────────────────────────────────────
         var leftBounds = DragRegionLeft
             .TransformToVisual(null)
             .TransformBounds(new Windows.Foundation.Rect(0, 0, DragRegionLeft.ActualWidth, DragRegionLeft.ActualHeight));
@@ -407,6 +417,16 @@ public sealed partial class SettingsWindow : Window
             _Height: (int)System.Math.Round(rightBounds.Height * scale));
 
         _ncInput.SetRegionRects(NonClientRegionKind.Caption, new[] { leftRect, rightRect });
+
+        // ── Resize-border rects ───────────────────────────────────────
+        int width  = _appWindow.Size.Width;
+        int height = _appWindow.Size.Height;
+        int border = (int)System.Math.Round(ResizeBorderDip * scale);
+
+        _ncInput.SetRegionRects(NonClientRegionKind.TopBorder,    new[] { new RectInt32(0, 0, width, border) });
+        _ncInput.SetRegionRects(NonClientRegionKind.LeftBorder,   new[] { new RectInt32(0, 0, border, height) });
+        _ncInput.SetRegionRects(NonClientRegionKind.RightBorder,  new[] { new RectInt32(width - border, 0, border, height) });
+        _ncInput.SetRegionRects(NonClientRegionKind.BottomBorder, new[] { new RectInt32(0, height - border, width, border) });
     }
 
     private void UpdateMaximizeGlyph()
