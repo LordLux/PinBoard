@@ -16,6 +16,10 @@ packages/
 AppPackages/
 BundleArtifacts/
 
+# MSIX signing key (private — never commit; thumbprint in csproj is enough)
+*.pfx
+PinBoard_TemporaryKey.cer
+
 # OS
 Thumbs.db
 .DS_Store

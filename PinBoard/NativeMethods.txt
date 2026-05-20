@@ -43,6 +43,10 @@ WINDOW_LONG_PTR_INDEX
 WINDOW_EX_STYLE
 SET_WINDOW_POS_FLAGS
 
+// Custom-chrome drag (synthetic WM_NCLBUTTONDOWN trick)
+ReleaseCapture
+SendMessage
+
 // Cursor / caret
 GetCursorPos
 GetGUIThreadInfo
@@ -60,10 +64,12 @@ DWM_WINDOW_CORNER_PREFERENCE
 
 // Monitor / DPI
 MonitorFromPoint
+MonitorFromWindow
 GetMonitorInfo
 GetDpiForMonitor
 GetDpiForWindow
 MONITOR_FROM_FLAGS
+MONITORINFO
 
 // Shell (source-app icon)
 SHGetFileInfo

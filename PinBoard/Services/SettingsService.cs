@@ -11,9 +11,11 @@ public sealed class SettingsService : ISettingsService
     // Stored as the exact CLR types LocalSettings supports:
     //   uint → UInt32, int → Int32, bool → Boolean, string → String.
 
+    // Default hotkey: Win+V (MOD_WIN = 0x0008). Replaces the prior Win+Shift+V
+    // (0x000C) default — see migration in the constructor.
     public uint HotkeyModifiers
     {
-        get => Get("HotkeyModifiers", 0x000Cu);
+        get => Get("HotkeyModifiers", 0x0008u);
         set => Store.Values["HotkeyModifiers"] = value;
     }
 
@@ -51,6 +53,22 @@ public sealed class SettingsService : ISettingsService
         _excludedApps = string.IsNullOrEmpty(raw)
             ? new List<string>()
             : raw.Split(';', StringSplitOptions.RemoveEmptyEntries).ToList();
+
+        MigrateHotkeyDefault();
+    }
+
+    // One-time migration: users still on the prior default (Win+Shift+V) are
+    // moved to the new default (Win+V). Triggered only when the stored values
+    // match the exact old default, so user-customised hotkeys are preserved.
+    private static void MigrateHotkeyDefault()
+    {
+        if (Store.Values.TryGetValue("HotkeyModifiers", out var modVal)
+            && Store.Values.TryGetValue("HotkeyKey", out var keyVal)
+            && modVal is uint mods && keyVal is uint key
+            && mods == 0x000Cu && key == 0x56u)
+        {
+            Store.Values["HotkeyModifiers"] = 0x0008u;
+        }
     }
 
     public void AddExcludedApp(string exePath)

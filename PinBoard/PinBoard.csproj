@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
@@ -10,6 +10,12 @@
     <PublishProfile>win-$(Platform).pubxml</PublishProfile>
     <UseWinUI>true</UseWinUI>
     <EnableMsixTooling>true</EnableMsixTooling>
+    <!-- Self-signed dev cert used to sign the MSIX so it can be sideloaded.
+         Generated with subject CN=LordLux (matches manifest Identity.Publisher).
+         Public part also installed to TrustedPeople so installs succeed. -->
+    <PackageCertificateKeyFile>PinBoard_TemporaryKey.pfx</PackageCertificateKeyFile>
+    <PackageCertificateThumbprint>CCFDFFC43F107BECF15805BF65826E67E7D4E7B5</PackageCertificateThumbprint>
+    <AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -71,5 +77,10 @@
     <PublishReadyToRun Condition="'$(Configuration)' != 'Debug'">True</PublishReadyToRun>
     <!-- Trimming breaks COM interop, SQLite reflection, and WinRT marshalling in this app. -->
     <PublishTrimmed>False</PublishTrimmed>
+    <GenerateDocumentationFile>False</GenerateDocumentationFile>
+    <CreateMSIXPackage>True</CreateMSIXPackage>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <IncludeSymbols>False</IncludeSymbols>
+    <Title>PinBoard</Title>
   </PropertyGroup>
 </Project>

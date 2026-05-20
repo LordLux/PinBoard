@@ -1,7 +1,8 @@
 {
   "profiles": {
     "PinBoard (Package)": {
-      "commandName": "MsixPackage"
+      "commandName": "MsixPackage",
+      "DeployOptionalPackages": true
     },
     "PinBoard (Unpackaged)": {
       "commandName": "Project"

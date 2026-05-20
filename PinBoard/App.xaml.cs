@@ -112,15 +112,15 @@ public partial class App : Application
 
     public void ShowSettingsWindow()
     {
-        if (_settingsWindow is null)
+        if (_settingsWindow is not null)
         {
-            var vm = new SettingsViewModel(
-                Services.GetRequiredService<ISettingsService>(),
-                Services.GetRequiredService<IHistoryStore>(),
-                Services.GetRequiredService<IHotkeyService>());
-            _settingsWindow = new SettingsWindow(vm);
-            _settingsWindow.Closed += (_, _) => _settingsWindow = null;
+            _settingsWindow.Activate();
+            return;
         }
+
+        var viewModel = Services.GetRequiredService<SettingsViewModel>();
+        _settingsWindow = new SettingsWindow(viewModel);
+        _settingsWindow.Closed += (_, _) => _settingsWindow = null;
         _settingsWindow.Activate();
     }
 

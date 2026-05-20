@@ -14,14 +14,14 @@ public static class Program
         {
             try
             {
-                var dir  = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "PinBoard");
+                var dir  = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PinBoard");
                 Directory.CreateDirectory(dir);
-                File.AppendAllText(Path.Combine(dir, "crash.log"),
-                    $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] terminating={e.IsTerminating}\n{e.ExceptionObject}\n\n");
+                File.AppendAllText(
+                    Path.Combine(dir, "crash.log"),
+                    $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] terminating={e.IsTerminating}\n{e.ExceptionObject}\n\n"
+                );
             }
-            catch { }
+            catch {}
         };
 
         WinRT.ComWrappersSupport.InitializeComWrappers();
@@ -37,14 +37,13 @@ public static class Program
         }
 
         // When a second instance tries to launch, show our popup in the existing instance.
-        mainInstance.Activated += (_, _) =>
-            App.Current?.DispatchShowPopup();
+        mainInstance.Activated += (_, _) => App.Current?.DispatchShowPopup();
 
         Application.Start(p =>
         {
-            var syncCtx = new DispatcherQueueSynchronizationContext(
-                DispatcherQueue.GetForCurrentThread());
+            var syncCtx = new DispatcherQueueSynchronizationContext(DispatcherQueue.GetForCurrentThread());
             SynchronizationContext.SetSynchronizationContext(syncCtx);
+
             new App();
         });
     }

@@ -6,247 +6,384 @@
     xmlns:controls="using:PinBoard.Views.Controls"
     Title="PinBoard Settings">
 
-    <!-- SystemBackdrop is set in code-behind: Mica on Win11+, Acrylic on Win10. -->
-
-    <Grid>
+    <Grid Background="#1E1E1E">
         <Grid.Resources>
-            <!-- Shared style for the rounded "setting card" containers -->
-            <Style x:Key="SettingCardStyle" TargetType="Border">
-                <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}"/>
-                <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}"/>
-                <Setter Property="BorderThickness" Value="1"/>
-                <Setter Property="CornerRadius" Value="8"/>
-                <Setter Property="Padding" Value="16,14"/>
-                <Setter Property="Margin" Value="0,0,0,6"/>
+            <!-- ════════════════════════════════════════════════════════════
+                 Setting card: solid dark panel that wraps each row of
+                 (icon, title+description, control).
+                 ════════════════════════════════════════════════════════════ -->
+            <Style x:Key="CardStyle" TargetType="Border">
+                <Setter Property="Background"    Value="#272727"/>
+                <Setter Property="CornerRadius"  Value="6"/>
+                <Setter Property="Padding"       Value="20,16"/>
+                <Setter Property="Margin"        Value="0,0,0,8"/>
+            </Style>
+
+            <Style x:Key="CardIconStyle" TargetType="FontIcon">
+                <Setter Property="FontFamily"   Value="Segoe MDL2 Assets"/>
+                <Setter Property="FontSize"     Value="20"/>
+                <Setter Property="Foreground"   Value="#CFCFCF"/>
+                <Setter Property="VerticalAlignment"   Value="Center"/>
+                <Setter Property="HorizontalAlignment" Value="Center"/>
+                <Setter Property="Width"        Value="36"/>
+            </Style>
+
+            <Style x:Key="CardTitleStyle" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="White"/>
+                <Setter Property="FontSize"   Value="14"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+            </Style>
+
+            <Style x:Key="CardSubtitleStyle" TargetType="TextBlock">
+                <Setter Property="Foreground"  Value="#9A9A9A"/>
+                <Setter Property="FontSize"    Value="12"/>
+                <Setter Property="TextWrapping" Value="Wrap"/>
+            </Style>
+
+            <Style x:Key="PageTitleStyle" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="White"/>
+                <Setter Property="FontSize"   Value="28"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="Margin"     Value="0,0,0,16"/>
             </Style>
         </Grid.Resources>
 
-        <NavigationView x:Name="NavView"
-                        PaneDisplayMode="Left"
-                        PaneTitle="Settings"
-                        IsBackButtonVisible="Collapsed"
-                        IsSettingsVisible="False"
-                        IsPaneToggleButtonVisible="False"
-                        OpenPaneLength="220"
-                        SelectionChanged="NavView_SelectionChanged">
-            <NavigationView.Resources>
-                <!-- Default is "7,0,0,0" — flatten the top-left so the
-                     content column meets the pane with a square edge. -->
-                <CornerRadius x:Key="NavigationViewContentGridCornerRadius">0</CornerRadius>
-            </NavigationView.Resources>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="220"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="32"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
 
-            <NavigationView.MenuItems>
-                <NavigationViewItem x:Name="NavGeneral" Content="General" Tag="general" IsSelected="True">
-                    <NavigationViewItem.Icon>
-                        <FontIcon Glyph="&#xE713;"/>
-                    </NavigationViewItem.Icon>
-                </NavigationViewItem>
-                <NavigationViewItem x:Name="NavHotkey" Content="Hotkey" Tag="hotkey">
-                    <NavigationViewItem.Icon>
-                        <FontIcon Glyph="&#xE765;"/>
-                    </NavigationViewItem.Icon>
-                </NavigationViewItem>
-                <NavigationViewItem x:Name="NavHistory" Content="History" Tag="history">
-                    <NavigationViewItem.Icon>
-                        <FontIcon Glyph="&#xE81C;"/>
-                    </NavigationViewItem.Icon>
-                </NavigationViewItem>
-            </NavigationView.MenuItems>
+        <!-- Dark left column. Spans both rows so the colour continues
+             through the custom title bar. Pure decoration — non-hit-test
+             so it never intercepts drag or button clicks. -->
+        <Border Grid.Row="0" Grid.RowSpan="2" Grid.Column="0"
+                Background="#171717"
+                IsHitTestVisible="False"/>
 
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="32"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
+        <!-- Drag region. -->
+        <Border x:Name="DragRegion"
+                Grid.Row="0" Grid.ColumnSpan="2"
+                Background="Transparent"
+                SizeChanged="DragRegion_SizeChanged"
+                Loaded="DragRegion_Loaded"/>
 
-                <!-- Drag region for the custom title bar -->
-                <Border x:Name="AppTitleBar" Grid.Row="0" Background="Transparent"/>
+        <TextBlock Grid.Row="0" Grid.Column="0"
+                   Text="Settings"
+                   VerticalAlignment="Center"
+                   Margin="14,0,0,0"
+                   Foreground="White"
+                   FontSize="12"
+                   IsHitTestVisible="False"/>
 
-                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                <Grid Padding="32,12,32,32" MaxWidth="720" HorizontalAlignment="Stretch">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
+        <StackPanel x:Name="CaptionButtons"
+                    Grid.Row="0" Grid.Column="1"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Top">
+            <Button Style="{StaticResource CaptionButtonStyle}"
+                    Click="MinimizeButton_Click"
+                    ToolTipService.ToolTip="Minimize">
+                <FontIcon Glyph="&#xE921;" FontSize="10"/>
+            </Button>
+            <Button x:Name="MaximizeButton"
+                    Style="{StaticResource CaptionButtonStyle}"
+                    Click="MaximizeButton_Click"
+                    ToolTipService.ToolTip="Maximize">
+                <FontIcon x:Name="MaximizeGlyph" Glyph="&#xE922;" FontSize="10"/>
+            </Button>
+            <Button Style="{StaticResource CloseCaptionButtonStyle}"
+                    Click="CloseButton_Click"
+                    ToolTipService.ToolTip="Close">
+                <FontIcon Glyph="&#xE8BB;" FontSize="10"/>
+            </Button>
+        </StackPanel>
 
-                    <!-- Page title -->
-                    <TextBlock x:Name="PageTitle"
-                               Grid.Row="0"
-                               Text="General"
-                               Style="{StaticResource TitleTextBlockStyle}"
-                               Margin="0,0,0,24"/>
-
-                    <!-- ══════════════════════════════════════════════════
-                         GENERAL page
-                         ══════════════════════════════════════════════════ -->
-                    <StackPanel x:Name="GeneralPage" Grid.Row="1" Spacing="0">
-
-                        <!-- Run at startup card -->
-                        <Border Style="{StaticResource SettingCardStyle}">
-                            <Grid ColumnSpacing="16">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-
-                                <FontIcon Grid.Column="0"
-                                          Glyph="&#xE7E8;"
-                                          FontSize="20"
-                                          VerticalAlignment="Center"/>
-
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                                    <TextBlock Text="Launch at login"
-                                               Style="{StaticResource BodyStrongTextBlockStyle}"/>
-                                    <TextBlock Text="Start PinBoard automatically when you sign in to Windows."
-                                               Style="{StaticResource CaptionTextBlockStyle}"
-                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                               TextWrapping="Wrap"/>
-                                </StackPanel>
-
-                                <ToggleSwitch Grid.Column="2"
-                                              VerticalAlignment="Center"
-                                              MinWidth="0"
-                                              OnContent="On"
-                                              OffContent="Off"
-                                              IsOn="{x:Bind ViewModel.RunAtStartup, Mode=TwoWay}"/>
-                            </Grid>
-                        </Border>
-
-                    </StackPanel>
-
-                    <!-- ══════════════════════════════════════════════════
-                         HOTKEY page
-                         ══════════════════════════════════════════════════ -->
-                    <StackPanel x:Name="HotkeyPage" Grid.Row="1" Spacing="0" Visibility="Collapsed">
-
-                        <!-- Hotkey picker card -->
-                        <Border Style="{StaticResource SettingCardStyle}" Padding="16,16">
-                            <Grid ColumnSpacing="16">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-
-                                <FontIcon Grid.Column="0"
-                                          Glyph="&#xE765;"
-                                          FontSize="20"
-                                          VerticalAlignment="Top"
-                                          Margin="0,2,0,0"/>
-
-                                <StackPanel Grid.Column="1" Spacing="4">
-                                    <TextBlock Text="Activation shortcut"
-                                               Style="{StaticResource BodyStrongTextBlockStyle}"/>
-                                    <TextBlock Text="Press this combination from anywhere to open the clipboard popup."
-                                               Style="{StaticResource CaptionTextBlockStyle}"
-                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                               TextWrapping="Wrap"
-                                               Margin="0,0,0,8"/>
-
-                                    <controls:HotkeyPickerControl
-                                        Modifiers="{x:Bind ViewModel.HotkeyModifiers, Mode=TwoWay}"
-                                        HotkeyKey="{x:Bind ViewModel.HotkeyKey, Mode=TwoWay}"/>
-
-                                    <TextBlock Text="{x:Bind ViewModel.HotkeyConflictWarning}"
-                                               TextWrapping="Wrap"
-                                               Style="{StaticResource CaptionTextBlockStyle}"
-                                               Foreground="{ThemeResource SystemFillColorCriticalBrush}"
-                                               Visibility="{x:Bind ViewModel.ShowHotkeyConflictWarning, Mode=OneWay}"
-                                               Margin="0,8,0,0"/>
-                                </StackPanel>
-                            </Grid>
-                        </Border>
-
-                    </StackPanel>
-
-                    <!-- ══════════════════════════════════════════════════
-                         HISTORY page
-                         ══════════════════════════════════════════════════ -->
-                    <StackPanel x:Name="HistoryPage" Grid.Row="1" Spacing="0" Visibility="Collapsed">
-
-                        <!-- History cap card -->
-                        <Border Style="{StaticResource SettingCardStyle}" Padding="16,16">
-                            <Grid ColumnSpacing="16">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-
-                                <FontIcon Grid.Column="0"
-                                          Glyph="&#xE81C;"
-                                          FontSize="20"
-                                          VerticalAlignment="Top"
-                                          Margin="0,2,0,0"/>
-
-                                <StackPanel Grid.Column="1" Spacing="6">
-                                    <Grid ColumnSpacing="8">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-
-                                        <TextBlock Grid.Column="0"
-                                                   Text="History capacity"
-                                                   Style="{StaticResource BodyStrongTextBlockStyle}"
-                                                   VerticalAlignment="Center"/>
-                                        <TextBlock Grid.Column="1"
-                                                   Text="{x:Bind ViewModel.HistoryCapDisplay, Mode=OneWay}"
-                                                   Style="{StaticResource BodyStrongTextBlockStyle}"
-                                                   Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                                                   VerticalAlignment="Center"/>
-                                    </Grid>
-                                    <TextBlock Text="Maximum number of unpinned items kept in your clipboard history."
-                                               Style="{StaticResource CaptionTextBlockStyle}"
-                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                               TextWrapping="Wrap"/>
-                                    <Slider Minimum="100" Maximum="10000"
-                                            Value="{x:Bind ViewModel.HistoryCap, Mode=TwoWay}"
-                                            StepFrequency="100"
-                                            SnapsTo="StepValues"
-                                            Margin="0,4,0,0"/>
-                                </StackPanel>
-                            </Grid>
-                        </Border>
-
-                        <!-- Clear history card -->
-                        <Border Style="{StaticResource SettingCardStyle}">
-                            <Grid ColumnSpacing="16">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-
-                                <FontIcon Grid.Column="0"
-                                          Glyph="&#xE74D;"
-                                          FontSize="20"
-                                          VerticalAlignment="Center"/>
-
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                                    <TextBlock Text="Clear history"
-                                               Style="{StaticResource BodyStrongTextBlockStyle}"/>
-                                    <TextBlock Text="Remove all unpinned items. Pinned items are preserved."
-                                               Style="{StaticResource CaptionTextBlockStyle}"
-                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                               TextWrapping="Wrap"/>
-                                    <TextBlock Text="History cleared."
-                                               Style="{StaticResource CaptionTextBlockStyle}"
-                                               Foreground="{ThemeResource SystemFillColorSuccessBrush}"
-                                               Visibility="{x:Bind ViewModel.HistoryJustCleared, Mode=OneWay}"
-                                               Margin="0,4,0,0"/>
-                                </StackPanel>
-
-                                <Button Grid.Column="2"
-                                        Content="Clear"
-                                        Command="{x:Bind ViewModel.ClearHistoryCommand}"
-                                        VerticalAlignment="Center"/>
-                            </Grid>
-                        </Border>
-
-                    </StackPanel>
+        <!-- ══════════════════════════════════════════════════════════════
+             LEFT COLUMN — nav tiles. Plain Grids with manual selection
+             state, because RadioButton's VisualState transitions are
+             unreliable in WinUI 3 once a state has been entered once
+             (see microsoft-ui-xaml backlog). Each tile is split into:
+              • a 14px gutter for the purple selection bar (sits outside
+                the tile body, flush with the dark column's left edge);
+              • the body (Bg fill + icon + label);
+              • a 14px right margin for symmetry.
+             ══════════════════════════════════════════════════════════════ -->
+        <StackPanel Grid.Row="1" Grid.Column="0"
+                    Margin="0,8,0,0"
+                    Spacing="3">
+            <Grid x:Name="NavGeneral" Tag="general"
+                  Background="Transparent"
+                  Height="40"
+                  Tapped="NavTile_Tapped"
+                  PointerEntered="NavTile_PointerEntered"
+                  PointerExited="NavTile_PointerExited">
+                <!-- Single-cell layout: all children overlap. Bg is inset by
+                     14px on each side, content matches its inset+padding,
+                     and the bar is positioned absolutely at x=14 over the
+                     top of everything thanks to sibling z-order. -->
+                <Border x:Name="NavGeneralBg"
+                        Background="#242424" CornerRadius="4" Opacity="0"
+                        Margin="14,0,14,0"/>
+                <Grid Margin="24,0,26,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="32"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <FontIcon Grid.Column="0" Glyph="&#xE713;" FontSize="16" FontFamily="Segoe MDL2 Assets"
+                              Foreground="White"
+                              HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" Text="General"
+                               Foreground="White" FontSize="14"
+                               VerticalAlignment="Center"/>
                 </Grid>
-                </ScrollViewer>
+                <Rectangle x:Name="NavGeneralBar"
+                           Width="3" Height="18"
+                           HorizontalAlignment="Left" VerticalAlignment="Center"
+                           Margin="14,0,0,0"
+                           RadiusX="1.5" RadiusY="1.5"
+                           Fill="#8B7BE0" Opacity="0"/>
             </Grid>
-        </NavigationView>
+
+            <Grid x:Name="NavHotkey" Tag="hotkey"
+                  Background="Transparent"
+                  Height="40"
+                  Tapped="NavTile_Tapped"
+                  PointerEntered="NavTile_PointerEntered"
+                  PointerExited="NavTile_PointerExited">
+                <Border x:Name="NavHotkeyBg"
+                        Background="#242424" CornerRadius="4" Opacity="0"
+                        Margin="14,0,14,0"/>
+                <Grid Margin="24,0,26,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="32"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <FontIcon Grid.Column="0" Glyph="&#xE92E;" FontSize="16" FontFamily="Segoe MDL2 Assets"
+                              Foreground="White"
+                              HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" Text="Hotkey"
+                               Foreground="White" FontSize="14"
+                               VerticalAlignment="Center"/>
+                </Grid>
+                <Rectangle x:Name="NavHotkeyBar"
+                           Width="3" Height="18"
+                           HorizontalAlignment="Left" VerticalAlignment="Center"
+                           Margin="14,0,0,0"
+                           RadiusX="1.5" RadiusY="1.5"
+                           Fill="#8B7BE0" Opacity="0"/>
+            </Grid>
+
+            <Grid x:Name="NavHistory" Tag="history"
+                  Background="Transparent"
+                  Height="40"
+                  Tapped="NavTile_Tapped"
+                  PointerEntered="NavTile_PointerEntered"
+                  PointerExited="NavTile_PointerExited">
+                <Border x:Name="NavHistoryBg"
+                        Background="#242424" CornerRadius="4" Opacity="0"
+                        Margin="14,0,14,0"/>
+                <Grid Margin="24,0,26,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="32"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <FontIcon Grid.Column="0" Glyph="&#xE81C;" FontSize="16" FontFamily="Segoe MDL2 Assets"
+                              Foreground="White"
+                              HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" Text="History"
+                               Foreground="White" FontSize="14"
+                               VerticalAlignment="Center"/>
+                </Grid>
+                <Rectangle x:Name="NavHistoryBar"
+                           Width="3" Height="18"
+                           HorizontalAlignment="Left" VerticalAlignment="Center"
+                           Margin="14,0,0,0"
+                           RadiusX="1.5" RadiusY="1.5"
+                           Fill="#8B7BE0" Opacity="0"/>
+            </Grid>
+
+            <Grid x:Name="NavAbout" Tag="about"
+                  Background="Transparent"
+                  Height="40"
+                  Tapped="NavTile_Tapped"
+                  PointerEntered="NavTile_PointerEntered"
+                  PointerExited="NavTile_PointerExited">
+                <Border x:Name="NavAboutBg"
+                        Background="#242424" CornerRadius="4" Opacity="0"
+                        Margin="14,0,14,0"/>
+                <Grid Margin="24,0,26,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="32"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <FontIcon Grid.Column="0" Glyph="&#xE946;" FontSize="16" FontFamily="Segoe MDL2 Assets"
+                              Foreground="White"
+                              HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" Text="About"
+                               Foreground="White" FontSize="14"
+                               VerticalAlignment="Center"/>
+                </Grid>
+                <Rectangle x:Name="NavAboutBar"
+                           Width="3" Height="18"
+                           HorizontalAlignment="Left" VerticalAlignment="Center"
+                           Margin="14,0,0,0"
+                           RadiusX="1.5" RadiusY="1.5"
+                           Fill="#8B7BE0" Opacity="0"/>
+            </Grid>
+        </StackPanel>
+
+        <!-- ══════════════════════════════════════════════════════════════
+             RIGHT COLUMN — page content
+             ══════════════════════════════════════════════════════════════ -->
+        <ScrollViewer x:Name="ContentScroll"
+                      Grid.Row="1" Grid.Column="1"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled"
+                      Padding="32,8,32,32">
+            <Grid MaxWidth="780" HorizontalAlignment="Stretch">
+
+                <!-- ── GENERAL ────────────────────────────────────────────── -->
+                <StackPanel x:Name="PageGeneral">
+                    <TextBlock Text="General" Style="{StaticResource PageTitleStyle}"/>
+
+                    <Border Style="{StaticResource CardStyle}">
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <FontIcon Grid.Column="0" Style="{StaticResource CardIconStyle}" Glyph="&#xE7E8;"/>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                <TextBlock Style="{StaticResource CardTitleStyle}"    Text="Launch at login"/>
+                                <TextBlock Style="{StaticResource CardSubtitleStyle}" Text="Start PinBoard automatically when you sign in to Windows."/>
+                            </StackPanel>
+                            <ToggleSwitch Grid.Column="2"
+                                          VerticalAlignment="Center"
+                                          MinWidth="0"
+                                          OnContent="On" OffContent="Off"
+                                          IsOn="{x:Bind ViewModel.RunAtStartup, Mode=TwoWay}"/>
+                        </Grid>
+                    </Border>
+                </StackPanel>
+
+                <!-- ── HOTKEY ─────────────────────────────────────────────── -->
+                <StackPanel x:Name="PageHotkey" Visibility="Collapsed">
+                    <TextBlock Text="Hotkey" Style="{StaticResource PageTitleStyle}"/>
+
+                    <Border Style="{StaticResource CardStyle}">
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <FontIcon Grid.Column="0" Style="{StaticResource CardIconStyle}" Glyph="&#xE92E;"
+                                      VerticalAlignment="Top" Margin="0,2,0,0"/>
+                            <StackPanel Grid.Column="1" Spacing="4">
+                                <TextBlock Style="{StaticResource CardTitleStyle}"    Text="Activation shortcut"/>
+                                <TextBlock Style="{StaticResource CardSubtitleStyle}" Text="Press this combination from anywhere to open the clipboard popup."
+                                           Margin="0,0,0,8"/>
+                                <controls:HotkeyPickerControl
+                                    Modifiers="{x:Bind ViewModel.HotkeyModifiers, Mode=TwoWay}"
+                                    HotkeyKey="{x:Bind ViewModel.HotkeyKey, Mode=TwoWay}"/>
+                                <TextBlock Text="{x:Bind ViewModel.HotkeyConflictWarning}"
+                                           Style="{StaticResource CardSubtitleStyle}"
+                                           Foreground="#E04F5F"
+                                           Visibility="{x:Bind ViewModel.ShowHotkeyConflictWarning, Mode=OneWay}"
+                                           Margin="0,8,0,0"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </StackPanel>
+
+                <!-- ── HISTORY ────────────────────────────────────────────── -->
+                <StackPanel x:Name="PageHistory" Visibility="Collapsed">
+                    <TextBlock Text="History" Style="{StaticResource PageTitleStyle}"/>
+
+                    <Border Style="{StaticResource CardStyle}">
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <FontIcon Grid.Column="0" Style="{StaticResource CardIconStyle}" Glyph="&#xE81C;"
+                                      VerticalAlignment="Top" Margin="0,2,0,0"/>
+                            <StackPanel Grid.Column="1" Spacing="6">
+                                <Grid ColumnSpacing="8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource CardTitleStyle}" Text="History capacity"/>
+                                    <TextBlock Grid.Column="1"
+                                               Text="{x:Bind ViewModel.HistoryCapDisplay, Mode=OneWay}"
+                                               Foreground="#8B7BE0"
+                                               FontWeight="SemiBold"
+                                               FontSize="14"
+                                               VerticalAlignment="Center"/>
+                                </Grid>
+                                <TextBlock Style="{StaticResource CardSubtitleStyle}"
+                                           Text="Maximum number of unpinned items kept in your clipboard history."/>
+                                <Slider Minimum="100" Maximum="10000"
+                                        Value="{x:Bind ViewModel.HistoryCap, Mode=TwoWay}"
+                                        StepFrequency="100"
+                                        SnapsTo="StepValues"
+                                        Margin="0,4,0,0"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <Border Style="{StaticResource CardStyle}">
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <FontIcon Grid.Column="0" Style="{StaticResource CardIconStyle}" Glyph="&#xE74D;"/>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                <TextBlock Style="{StaticResource CardTitleStyle}"    Text="Clear history"/>
+                                <TextBlock Style="{StaticResource CardSubtitleStyle}" Text="Remove all unpinned items. Pinned items are preserved."/>
+                                <TextBlock Text="History cleared."
+                                           Style="{StaticResource CardSubtitleStyle}"
+                                           Foreground="#5CC8A0"
+                                           Visibility="{x:Bind ViewModel.HistoryJustCleared, Mode=OneWay}"
+                                           Margin="0,4,0,0"/>
+                            </StackPanel>
+                            <Button Grid.Column="2"
+                                    Content="Clear"
+                                    VerticalAlignment="Center"
+                                    Command="{x:Bind ViewModel.ClearHistoryCommand}"/>
+                        </Grid>
+                    </Border>
+                </StackPanel>
+
+                <!-- ── ABOUT ──────────────────────────────────────────────── -->
+                <StackPanel x:Name="PageAbout" Visibility="Collapsed">
+                    <TextBlock Text="About" Style="{StaticResource PageTitleStyle}"/>
+
+                    <Border Style="{StaticResource CardStyle}">
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <FontIcon Grid.Column="0" Style="{StaticResource CardIconStyle}" Glyph="&#xE8C8;"/>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                <TextBlock Style="{StaticResource CardTitleStyle}"    Text="PinBoard"/>
+                                <TextBlock Style="{StaticResource CardSubtitleStyle}" Text="A lightweight clipboard manager for Windows."/>
+                                <TextBlock x:Name="VersionText"
+                                           Style="{StaticResource CardSubtitleStyle}"
+                                           Margin="0,4,0,0"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </ScrollViewer>
     </Grid>
 </Window>
